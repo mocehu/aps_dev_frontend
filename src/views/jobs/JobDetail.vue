@@ -1,90 +1,90 @@
 <template>
   <div class="job-detail-container">
-    <el-card shadow="never">
-      <template #header>
+    <a-card :bordered="false" :shadow="false">
+      <template #title>
         <div class="detail-log-header">
           <div class="header-left">
-            <el-button type="primary" plain icon="Back" @click="goBack" class="back-button">返回任务列表</el-button>
+            <a-button type="primary" plain icon="Back" @click="goBack" class="back-button">返回任务列表</a-button>
             <span class="header-title" v-if="detailJobsLog">{{ detailJobsLog.func }} 任务执行记录</span>
             <span class="header-title" v-else>任务执行记录</span>
           </div>
           <div class="header-right">
-            <el-tag type="info" effect="plain" size="large" v-if="detailJobsLog">任务ID: {{ detailJobsLog.id }}</el-tag>
-            <el-tag type="info" effect="plain" size="large" v-else>正在加载...</el-tag>
+            <a-tag type="info" effect="plain" size="large" v-if="detailJobsLog">任务ID: {{ detailJobsLog.id }}</a-tag>
+            <a-tag type="info" effect="plain" size="large" v-else>正在加载...</a-tag>
           </div>
         </div>
       </template>
       
       <div class="detail-log-container">
         <!-- 任务基本信息卡片 -->
-        <el-card class="task-info-card" shadow="hover" v-if="detailJobsLog">
-          <template #header>
+        <a-card class="task-info-card" :bordered="false" :hoverable="true" v-if="detailJobsLog">
+          <template #title>
             <div class="card-header">
               <span>任务基本信息</span>
             </div>
           </template>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="任务函数">{{ detailJobsLog.func }}</el-descriptions-item>
-            <el-descriptions-item label="触发器类型">{{ detailJobsLog.trigger }}</el-descriptions-item>
-            <el-descriptions-item label="参数">{{ detailJobsLog.kwargs || '无' }}</el-descriptions-item>
-            <el-descriptions-item label="下次执行时间">
+          <a-descriptions :column="2" :bordered="false">
+            <a-descriptions-item label="任务函数">{{ detailJobsLog.func }}</a-descriptions-item>
+            <a-descriptions-item label="触发器类型">{{ detailJobsLog.trigger }}</a-descriptions-item>
+            <a-descriptions-item label="参数">{{ detailJobsLog.kwargs || '无' }}</a-descriptions-item>
+            <a-descriptions-item label="下次执行时间">
               <div class="next-run-time">
-                <el-tag 
+                <a-tag 
                   :type="getTimeTagType(detailJobsLog.next_run_time)" 
                   effect="plain" 
                   size="default"
                 >
                   {{ formatNextRunTime(detailJobsLog.next_run_time) }}
-                </el-tag>
+                </a-tag>
                 <div class="time-relative" v-if="detailJobsLog.next_run_time">
                   {{ getRelativeTime(detailJobsLog.next_run_time) }}
                 </div>
               </div>
-            </el-descriptions-item>
-            <el-descriptions-item label="状态">
-              <el-tag :type="detailJobsLog.status === '已暂停' ? 'danger' : 'success'">
+            </a-descriptions-item>
+            <a-descriptions-item label="状态">
+              <a-tag :type="detailJobsLog.status === '已暂停' ? 'danger' : 'success'">
                 {{ detailJobsLog.status }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="操作">
-              <el-button-group>
-                <el-button size="small" type="primary" @click="editJob(detailJobsLog)">编辑</el-button>
-                <el-button size="small" :type="detailJobsLog.status === '已暂停' ? 'success' : 'warning'" @click="changeStatus(detailJobsLog.status, detailJobsLog)">
+              </a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="操作">
+              <a-button-group>
+                <a-button size="small" type="primary" @click="editJob(detailJobsLog)">编辑</a-button>
+                <a-button size="small" :type="detailJobsLog.status === '已暂停' ? 'success' : 'warning'" @click="changeStatus(detailJobsLog.status, detailJobsLog)">
                   {{ detailJobsLog.status === '已暂停' ? '恢复' : '暂停' }}
-                </el-button>
-                <el-button size="small" type="danger" @click="deleteJob(detailJobsLog)">删除</el-button>
-                <el-button size="small" type="success" @click="runJobNow(detailJobsLog)">立即执行</el-button>
-              </el-button-group>
-            </el-descriptions-item>
-          </el-descriptions>
-        </el-card>
+                </a-button>
+                <a-button size="small" type="danger" @click="deleteJob(detailJobsLog)">删除</a-button>
+                <a-button size="small" type="success" @click="runJobNow(detailJobsLog)">立即执行</a-button>
+              </a-button-group>
+            </a-descriptions-item>
+          </a-descriptions>
+        </a-card>
         
-        <el-card class="task-info-card" shadow="hover" v-else>
-          <template #header>
+        <a-card class="task-info-card" :bordered="false" :hoverable="true" v-else>
+          <template #title>
             <div class="card-header">
               <span>任务基本信息</span>
             </div>
           </template>
           <div class="loading-placeholder">
-            <el-empty description="正在加载任务信息..." />
+            <a-empty description="正在加载任务信息..." />
           </div>
-        </el-card>
+        </a-card>
         
         <!-- 日志筛选区域 -->
         <div class="log-filter-section" v-if="detailJobsLog">
           <div class="filter-title">日志筛选</div>
           <div class="filter-content">
-            <el-select v-model="searchSelect" clearable placeholder="执行状态" @change="searchSelectValue">
-              <el-option
+            <a-select v-model="searchSelect" clearable placeholder="执行状态" @change="searchSelectValue">
+              <a-option
                 v-for="item in statusOptions"
                 :key="item.value"
                 :label="item.label"
                 :value="item.value"
               />
-            </el-select>
+            </a-select>
             
-            <el-config-provider :locale="zhCn">
-              <el-date-picker
+            <a-config-provider :locale="zhCn">
+              <a-date-picker
                 v-model="searchDate"
                 type="datetimerange"
                 start-placeholder="开始时间"
@@ -94,10 +94,10 @@
                 @change="searchDateValue"
                 style="margin: 0 10px;"
               />
-            </el-config-provider>
+            </a-config-provider>
 
-            <el-button type="primary" @click="searchLog">搜索</el-button>
-            <el-button @click="resetSearch">重置</el-button>
+            <a-button type="primary" @click="searchLog">搜索</a-button>
+            <a-button @click="resetSearch">重置</a-button>
           </div>
         </div>
         
@@ -107,10 +107,10 @@
           <div class="log-list">
             <div class="log-list-header">
               <span>执行记录</span>
-              <el-badge :value="missionLogTotal" :max="99" type="info" />
+              <a-badge :value="missionLogTotal" :max="99" type="info" />
             </div>
             
-            <el-scrollbar height="400px">
+            <a-scrollbar height="400px">
               <div v-if="missionLogTableData.length > 0">
                 <div 
                   v-for="(item, index) in missionLogTableData" 
@@ -119,13 +119,13 @@
                   @click="showDetailLogMessage(item, index)"
                 >
                   <div class="log-item-left">
-                    <el-tag 
+                    <a-tag 
                       :type="item.status ? 'success' : 'danger'" 
                       size="small" 
                       effect="dark"
                     >
                       {{ item.status ? '成功' : '失败' }}
-                    </el-tag>
+                    </a-tag>
                   </div>
                   <div class="log-item-center">
                     <div class="log-time">{{ formatLogTime(item.timestamp) }}</div>
@@ -136,12 +136,12 @@
                   </div>
                 </div>
               </div>
-              <el-empty v-else description="暂无日志记录" />
-            </el-scrollbar>
+              <a-empty v-else description="暂无日志记录" />
+            </a-scrollbar>
             
             <div class="log-pagination">
-              <el-config-provider :locale="zhCn">
-                <el-pagination
+              <a-config-provider :locale="zhCn">
+                <a-pagination
                   v-model:current-page="missionLogCurrentPage"
                   v-model:page-size="missionLogPageSize"
                   :page-sizes="[5, 10, 20, 30]"
@@ -149,9 +149,9 @@
                   :total="missionLogTotal"
                   @size-change="missionLogSizeChange"
                   @current-change="missionLogCurrentChange"
-                  small
+                  size="small"
                 />
-              </el-config-provider>
+              </a-config-provider>
             </div>
           </div>
           
@@ -159,35 +159,35 @@
           <div v-if="detailLogMessage && Object.keys(detailLogMessage).length > 0" class="log-detail">
             <div class="log-detail-header">
               <span>执行详情</span>
-              <el-tag 
+              <a-tag 
                 :type="detailLogMessage.status ? 'success' : 'danger'" 
                 effect="dark"
               >
                 {{ detailLogMessage.status ? '成功' : '失败' }}
-              </el-tag>
+              </a-tag>
             </div>
             
-            <el-descriptions :column="1" border>
-              <el-descriptions-item label="任务编号">
+            <a-descriptions :column="1" :bordered="false">
+              <a-descriptions-item label="任务编号">
                 {{ detailLogMessage.job_id || '未知' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="执行信息">
+              </a-descriptions-item>
+              <a-descriptions-item label="执行信息">
                 {{ detailLogMessage.message || '无信息' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="开始时间">
+              </a-descriptions-item>
+              <a-descriptions-item label="开始时间">
                 {{ formatFullDateTime(detailLogMessage.timestamp) }}
-              </el-descriptions-item>
-              <el-descriptions-item label="执行耗时">
+              </a-descriptions-item>
+              <a-descriptions-item label="执行耗时">
                 {{ formatDuration(detailLogMessage.duration) }}
-              </el-descriptions-item>
-            </el-descriptions>
+              </a-descriptions-item>
+            </a-descriptions>
             
             <div class="output-section">
               <div class="output-header">任务输出</div>
-              <el-input
+              <a-input
                 v-model="detailLogMessage.output"
                 type="textarea"
-                :autosize="{ minRows: 4, maxRows: 10 }"
+                :autoSize="{ minRows: 4, maxRows: 10 }"
                 placeholder="无输出内容"
                 readonly
               />
@@ -196,15 +196,15 @@
           
           <!-- 无日志时的占位 -->
           <div v-else class="no-log-selected">
-            <el-empty description="请选择一条日志记录查看详情" />
+            <a-empty description="请选择一条日志记录查看详情" />
           </div>
         </div>
         
         <div class="log-detail-section" v-else>
-          <el-empty description="加载中，请稍候..." />
+          <a-empty description="加载中，请稍候..." />
         </div>
       </div>
-    </el-card>
+    </a-card>
     
     <!-- 任务表单抽屉 -->
     <JobFormDrawer 
@@ -222,9 +222,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { ElConfigProvider } from 'element-plus'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import { message, Modal } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
@@ -297,15 +295,15 @@ const loadJobDetail = async () => {
         // 获取任务日志
         getMissionLogTableData(missionLogCurrentPage.value, missionLogPageSize.value)
       } else {
-        ElMessage.error('未找到指定任务')
+        message.error('未找到指定任务')
         router.push('/jobs')
       }
     } else {
-      ElMessage.error('获取任务列表失败')
+      message.error('获取任务列表失败')
       console.error('API返回格式不正确', response)
     }
   } catch (error) {
-    ElMessage.error('加载任务详情失败')
+    message.error('加载任务详情失败')
     console.error(error)
   }
 }
@@ -507,27 +505,26 @@ const editJob = async (row: Job) => {
 }
 
 const deleteJob = (row: any) => {
-  ElMessageBox.confirm(
-    '确认删除该任务?',
-    '提示',
-    {
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      type: 'warning',
+  Modal.confirm({
+    title: '确认删除该任务?',
+    content: '确认删除该任务?',
+    okText: '确认',
+    cancelText: '取消',
+    type: 'warning',
+    onOk: async() => {
+      await apiDeleteJob(row.id)
+      message.success('删除成功')
+      router.push('/jobs')
     }
-  ).then(async() => {
-    await apiDeleteJob(row.id)
-    ElMessage.success('删除成功')
-    router.push('/jobs')
   })
 }
 
 const runJobNow = async (row: Job) => {
   const response = await immediateJob(row)
   if (response && response.code === 200) {
-    ElMessage.success(response.msg || '执行成功')
+    message.success(response.msg || '执行成功')
   } else {
-    ElMessage.error('执行失败')
+    message.error('执行失败')
   }
   loadJobDetail()
 }
@@ -535,10 +532,10 @@ const runJobNow = async (row: Job) => {
 const changeStatus = async (status: string, row: any) => {
   if(status === '已暂停') {
     await resumeJob(row.id)
-    ElMessage.success('任务恢复')
+    message.success('任务恢复')
   } else {
     await pauseJob(row.id)
-    ElMessage.success('任务暂停')
+    message.success('任务暂停')
   }
   loadJobDetail()
 }
@@ -549,11 +546,11 @@ const submitForm = async (data: any) => {
       data.kwargs = {}
     }
     await apiEditJob(data)
-    ElMessage.success('修改成功')
+    message.success('修改成功')
     loadJobDetail()
     drawer.value = false
   } catch (error: any) {
-    ElMessage.error('修改失败：' + (error.message || '未知错误'))
+    message.error('修改失败：' + (error.message || '未知错误'))
   }
 }
 

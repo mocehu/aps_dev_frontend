@@ -9,15 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@element-plus/icons-vue": "^2.3.1",
+    "@ant-design/icons-vue": "^7.0.1",
+    "ant-design-vue": "^4.1.2",
     "axios": "^1.6.8",
     "dayjs": "^1.11.13",
-    "element-plus": "^2.7.8",
     "lodash": "^4.17.21",
     "vue": "^3.4.35",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.20",
     "@types/node": "^24.0.12",
     "@vitejs/plugin-vue": "^5.1.2",
     "sass-embedded": "^1.77.8",

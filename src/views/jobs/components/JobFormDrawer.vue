@@ -1,80 +1,96 @@
 <template>
-  <el-drawer :modelValue="modelValue" @update:modelValue="$emit('update:modelValue', $event)" :title="title" size="50%" @closed="close" :destroy-on-close="true">
-    <el-form
+  <a-drawer 
+    :visible="modelValue" 
+    @update:visible="$emit('update:modelValue', $event)" 
+    :title="title" 
+    :width="800"
+    @close="close" 
+    :destroyOnClose="true"
+  >
+    <a-form
       ref="formRef"
       :model="formDataCopy"
       :rules="rules"
-      label-width="100px"
+      layout="vertical"
       class="task-form"
-      status-icon
     >
       <!-- 添加步骤指引 -->
       <div class="form-steps">
-        <el-steps :active="formStepActive" finish-status="success" simple>
-          <el-step title="选择任务" />
-          <el-step title="设置触发器" />
-          <el-step title="配置参数" />
-        </el-steps>
+        <a-steps :current="formStepActive - 1" size="small">
+          <a-step title="选择任务" />
+          <a-step title="设置触发器" />
+          <a-step title="配置参数" />
+        </a-steps>
       </div>
 
       <!-- 任务函数选择 -->
       <div class="form-section">
         <h3 class="section-title">基本信息</h3>
-        <el-form-item label="任务函数" prop="func">
-          <el-select 
-            v-model="formDataCopy.func" 
+        <a-form-item name="func" label="任务函数">
+          <a-select
+            v-model:value="formDataCopy.func" 
             placeholder="请选择任务函数" 
             @change="changeFunc"
-            filterable
+            show-search
             style="width: 100%"
-            popper-class="func-select-dropdown"
+            option-filter-prop="label"
           >
-            <el-option 
-              v-for="item in funcOptions"
-              :key="item.value"
+            <a-select-option 
+              v-for="item in funcOptions" 
+              :key="item.value" 
+              :value="item.value"
               :label="item.label"
-              :value="item.value">
+            >
               <div class="func-option">
-                <span class="func-name">{{ item.label }}</span>
+                <div class="func-name">{{ item.label }}</div>
                 <div v-if="getFuncDescription(item.value)" class="func-description">
                   {{ getFuncDescription(item.value) }}
                 </div>
               </div>
-            </el-option>
-          </el-select>
-          <div v-if="whatsFunc" class="form-helper-text">
-            已选择: <el-tag size="small" effect="dark">{{ whatsFunc }}</el-tag>
-            <el-alert
+            </a-select-option>
+          </a-select>
+          <template v-if="whatsFunc">
+            <div class="form-helper-text">
+              已选择: <a-tag>{{ whatsFunc }}</a-tag>
+            </div>
+            <a-alert
               v-if="getFuncDescription(whatsFunc)"
-              :title="getFuncDescription(whatsFunc)"
+              :message="getFuncDescription(whatsFunc)"
               type="info"
-              :closable="false"
               class="func-selected-description"
               show-icon
+              style="margin-top: 8px"
             />
-          </div>
-        </el-form-item>
+          </template>
+        </a-form-item>
 
-        <el-form-item label="任务ID" prop="job_id">
-          <el-input v-model="formDataCopy.job_id" placeholder="请输入任务ID">
-            <template #prepend>ID</template>
-            <template #append>
-              <el-button @click="generateRandomId">随机生成</el-button>
-            </template>
-          </el-input>
+        <a-form-item name="job_id" label="任务ID">
+          <a-input-group compact>
+            <a-input
+              v-model:value="formDataCopy.job_id" 
+              placeholder="请输入任务ID"
+              addon-before="ID" 
+              style="width: calc(100% - 110px)"
+            />
+            <a-button style="width: 110px" @click="generateRandomId">随机生成</a-button>
+          </a-input-group>
           <div class="form-helper-text">任务ID用于唯一标识此任务，可以包含字母、数字和下划线</div>
-        </el-form-item>
+        </a-form-item>
       </div>
 
       <!-- 触发器设置 -->
       <div class="form-section">
         <h3 class="section-title">触发器设置</h3>
-        <el-form-item label="触发器类型" prop="trigger">
-          <el-radio-group v-model="formDataCopy.trigger" @change="changeTrigger">
-            <el-radio-button label="interval">周期性任务</el-radio-button>
-            <el-radio-button label="cron">特定时间周期</el-radio-button>
-            <el-radio-button label="date">特定日期</el-radio-button>
-          </el-radio-group>
+        <a-form-item name="trigger" label="触发器类型">
+          <a-radio-group 
+            v-model:value="formDataCopy.trigger" 
+            button-style="solid"
+            @change="changeTrigger"
+          >
+            <a-radio-button value="interval">周期性任务</a-radio-button>
+            <a-radio-button value="cron">特定时间周期</a-radio-button>
+            <a-radio-button value="date">特定日期</a-radio-button>
+          </a-radio-group>
           
           <div class="trigger-description">
             <template v-if="formDataCopy.trigger === 'interval'">
@@ -87,9 +103,9 @@
               特定日期：在指定的日期和时间执行一次
             </template>
           </div>
-        </el-form-item>
+        </a-form-item>
 
-        <el-form-item label="运行时间" v-if="whatsTrigger">
+        <a-form-item label="运行时间" v-if="whatsTrigger">
           <div v-if="whatsTrigger === 'interval'" class="time-inputs">
             <div class="time-inputs-header">设置时间间隔：</div>
             <yhInput :data="runTimeInterval" :formData="formDataCopy" />
@@ -104,17 +120,18 @@
           
           <div v-if="whatsTrigger === 'date'" class="time-inputs">
             <div class="time-inputs-header">选择执行日期和时间：</div>
-            <el-date-picker
-              v-model="formDataCopy.trigger_args.run_date"
-              type="datetime"
-              placeholder="选择日期和时间"
+            <a-date-picker
+              v-model:value="formDataCopy.trigger_args.run_date"
+              type="date"
+              show-time
               format="YYYY-MM-DD HH:mm:ss"
               value-format="YYYY-MM-DDTHH:mm:ss"
               style="width: 100%"
+              placeholder="选择日期和时间"
             />
             <div class="form-helper-text">任务将在所选时间执行一次</div>
           </div>
-        </el-form-item>
+        </a-form-item>
       </div>
 
       <!-- 参数设置 -->
@@ -122,88 +139,80 @@
         <h3 class="section-title">参数设置</h3>
         
         <template v-if="whatsFunc === 'another_task'">
-          <el-form-item label="参数值" prop="kwargs.param">
-            <el-input 
-              v-model="formDataCopy.kwargs.param" 
+          <a-form-item label="参数值" name="['kwargs', 'param']">
+            <a-input 
+              v-model:value="formDataCopy.kwargs.param" 
               placeholder="请输入param参数的值"
-            >
-              <template #prepend>param</template>
-            </el-input>
+              addon-before="param"
+            />
             <div class="form-helper-text">
-              <el-alert
-                title="参数说明"
+              <a-alert
+                message="参数说明"
+                description="param参数用于传递给另一个任务的值"
                 type="info"
-                :closable="false"
                 show-icon
-              >
-                <div>param参数用于传递给另一个任务的值</div>
-              </el-alert>
+              />
             </div>
-          </el-form-item>
+          </a-form-item>
         </template>
         
         <template v-if="whatsFunc === 'run_os_command' || whatsFunc === 'run_python_command'">
-          <el-form-item label="命令" prop="kwargs.command">
-            <el-input 
-              v-model="formDataCopy.kwargs.command" 
+          <a-form-item label="命令" name="['kwargs', 'command']">
+            <a-textarea 
+              v-model:value="formDataCopy.kwargs.command" 
               placeholder="请输入要执行的命令"
-              type="textarea"
-              :autosize="{ minRows: 2, maxRows: 5 }"
+              :auto-size="{ minRows: 2, maxRows: 5 }"
             />
             <div class="form-helper-text">
-              <el-alert
-                :title="whatsFunc === 'run_os_command' ? '系统命令' : 'Python命令'"
+              <a-alert
+                :message="whatsFunc === 'run_os_command' ? '系统命令' : 'Python命令'"
+                :description="whatsFunc === 'run_os_command' ? 
+                  '输入要执行的系统命令，例如：dir, ls -la 等' : 
+                  '输入要执行的Python代码，例如：print(\'Hello World\')'
+                "
                 type="info"
-                :closable="false"
                 show-icon
-              >
-                <div v-if="whatsFunc === 'run_os_command'">
-                  输入要执行的系统命令，例如：dir, ls -la 等
-                </div>
-                <div v-else>
-                  输入要执行的Python代码，例如：print('Hello World')
-                </div>
-              </el-alert>
+              />
             </div>
-          </el-form-item>
+          </a-form-item>
         </template>
         
         <template v-if="whatsFunc === 'example_task'">
-          <el-form-item label="参数1" prop="kwargs.arg1">
-            <el-input 
-              v-model="formDataCopy.kwargs.arg1" 
+          <a-form-item label="参数1" name="['kwargs', 'arg1']">
+            <a-input 
+              v-model:value="formDataCopy.kwargs.arg1" 
               placeholder="请输入参数1的值"
-            >
-              <template #prepend>arg1</template>
-            </el-input>
-          </el-form-item>
+              addon-before="arg1"
+            />
+          </a-form-item>
           
-          <el-form-item label="参数2" prop="kwargs.arg2">
-            <el-input 
-              v-model="formDataCopy.kwargs.arg2" 
-              placeholder="请输入参数2的值"
-            >
-              <template #prepend>arg2</template>
-            </el-input>
+          <a-form-item label="参数2" name="['kwargs', 'arg2']">
+            <a-input 
+              v-model:value="formDataCopy.kwargs.arg2" 
+              placeholder="请输入参数2的值" 
+              addon-before="arg2"
+            />
             <div class="form-helper-text">参数2必须是整数类型</div>
-          </el-form-item>
+          </a-form-item>
         </template>
       </div>
 
       <!-- 表单操作按钮 -->
       <div class="form-actions">
-        <el-form-item>
-          <el-button type="primary" @click="submitForm" :loading="submitLoading">{{ formDataCopy.id ? '保存修改' : '创建任务' }}</el-button>
-          <el-button @click="close">取消</el-button>
-        </el-form-item>
+        <a-space>
+          <a-button type="primary" @click="submitForm" :loading="submitLoading">
+            {{ formDataCopy.id ? '保存修改' : '创建任务' }}
+          </a-button>
+          <a-button @click="close">取消</a-button>
+        </a-space>
       </div>
-    </el-form>
-  </el-drawer>
+    </a-form>
+  </a-drawer>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { message } from 'ant-design-vue'
 import _ from 'lodash'
 // @ts-ignore
 import yhInput from '../../../components/yh-input.vue'
@@ -250,310 +259,310 @@ const whatsFunc = ref('')
 const whatsTrigger = ref('')
 const submitLoading = ref(false)
 
-// 表单验证规则
-const rules = {
-  func: [{ required: true, message: '请选择任务函数', trigger: 'blur' }],
-  trigger: [{ required: true, message: '请选择触发器', trigger: 'blur'}],
-  job_id: [{ required: true, message: '请输入任务ID', trigger: 'blur' }],
-  kwargs: {
-    param: [{ required: true, message: '请输入param参数的值', trigger: 'blur' }],
-    command: [{ required: true, message: '请输入command参数的值', trigger: 'blur' }],
-    arg1:[{ required: true, message: '请输入arg1参数的值', trigger: 'blur' }],
-    arg2:[{ required: true, message: '请输入arg1参数的值', trigger: 'blur' },
-      { pattern:/^(?:0|(?:-?[1-9]\d*))$/, message: 'arg1参数的值是一个整数', trigger: 'blur' }
-    ],
-  },
-}
-
-// 周期性任务的时间输入配置
-const runTimeInterval = [
-  {
-    min: 0,
-    max: 99999999999,
-    maxlength: 1,
-    model: 'weeks',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入周数',
-    suffixSlot: '周'
-  },
-  {
-    min: 0,
-    max: 99999999999,
-    maxlength: 2,
-    model: 'days',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入天数',
-    suffixSlot: '天'
-  },
-  {
-    min: 0,
-    max: 99999999999,
-    maxlength: 2,
-    model: 'hours',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入小时',
-    suffixSlot: '小时'
-  },
-  {
-    min: 0,
-    max: 99999999999,
-    maxlength: 2,
-    model: 'minutes',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入分钟',
-    suffixSlot: '分钟'
-  },
-  {
-    min: 0,
-    max: 99999999999,
-    maxlength: 2,
-    model: 'seconds',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入秒数',
-    suffixSlot: '秒'
-  },
-]
-
-// 特定时间周期的时间输入配置
-const runTimeCron = [
-  {
-    min: 1970,
-    max: 9999,
-    maxlength: 4,
-    model: 'year',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入年份',
-    suffixSlot: '年'
-  },
-  {
-    min: 1,
-    max: 12,
-    maxlength: 2,
-    model: 'month',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入月份',
-    suffixSlot: '月'
-  },
-  {
-    min: 1,
-    max: 31,
-    maxlength: 2,
-    model: 'day',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入天数',
-    suffixSlot: '日'
-  },
-  {
-    min: 0,
-    max: 23,
-    maxlength: 2,
-    model: 'hour',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入小时',
-    suffixSlot: '小时'
-  },
-  {
-    min: 0,
-    max: 59,
-    maxlength: 2,
-    model: 'minute',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入分钟',
-    suffixSlot: '分钟'
-  },
-  {
-    min: 0,
-    max: 59,
-    maxlength: 2,
-    model: 'second',
-    type: 'number',
-    width: '9.375rem',
-    placeholder: '请输入秒数',
-    suffixSlot: '秒'
-  },
-]
-
-// 方法
-const changeFunc = (func: string) => {
-  whatsFunc.value = func
-  formDataCopy.value.kwargs = {}
-  formStepActive.value = 2
-}
-
-const changeTrigger = (trigger: string) => {
-  if(trigger === 'cron') {
-    formDataCopy.value.trigger_args = {
-      day_of_week: 0,
-      day: 1,
-      month: 1,
-      year: null,
-      hour: 0,
-      minute: 0,
-      second: 0,
-    }
-  } else if(trigger === 'interval') {
-    formDataCopy.value.trigger_args = {
-      weeks: 0,
-      days: 0,
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
-    }
-  } else if(trigger === 'date') {
-    formDataCopy.value.trigger_args = {
-      run_date: '',
-    }
-  }
-  whatsTrigger.value = trigger
-  formStepActive.value = 3
-}
-
-const close = () => {
-  emit('update:modelValue', false)
-  emit('close')
-  formRef.value?.resetFields()
-}
-
-const submitForm = async () => {
-  if (!formRef.value) return
-  
-  await formRef.value.validate((valid: boolean, fields: any) => {
-    if (valid) {
-      submitLoading.value = true
-      try {
-        emit('submit', formDataCopy.value)
-      } catch (error: any) {
-        ElMessage.error('提交失败：' + error.message)
-      } finally {
-        submitLoading.value = false
-      }
-    } else {
-      console.log('表单验证失败:', fields)
-      ElMessage.error('请完善表单信息')
-    }
-  })
-}
-
-const generateRandomId = () => {
-  const prefix = 'task_'
-  const randomStr = Math.random().toString(36).substring(2, 10)
-  formDataCopy.value.job_id = prefix + randomStr
-}
-
-const getFuncDescription = (funcName: string) => {
-  if (!props.funcOptions.length) return ''
-  const func = props.funcOptions.find(item => item.value === funcName)
-  return func ? func.description : ''
-}
-
 // 监听formData变化
 watch(() => props.formData, (newVal) => {
-  if (newVal) {
-    formDataCopy.value = {
-      func: newVal.func || '',
-      trigger: newVal.trigger || '',
-      kwargs: newVal.kwargs || {},
-      job_id: newVal.job_id || '',
-      trigger_args: newVal.trigger_args || {},
-      ...(newVal.id ? { id: newVal.id } : {})
-    }
+  // 深拷贝防止引用错误
+  formDataCopy.value = _.cloneDeep(newVal)
+  
+  // 确保kwargs和trigger_args存在
+  if (!formDataCopy.value.kwargs) formDataCopy.value.kwargs = {}
+  if (!formDataCopy.value.trigger_args) formDataCopy.value.trigger_args = {}
+  
+  // 设置当前步骤
+  if (formDataCopy.value.func) {
+    whatsFunc.value = formDataCopy.value.func
+    formStepActive.value = 2
     
-    // 设置步骤和状态
-    if (newVal.func) {
-      whatsFunc.value = newVal.func
-      formStepActive.value = 2
-    }
-    
-    if (newVal.trigger) {
-      whatsTrigger.value = newVal.trigger
+    if (formDataCopy.value.trigger) {
+      whatsTrigger.value = formDataCopy.value.trigger
       formStepActive.value = 3
     }
   }
-}, { immediate: true, deep: true })
+}, { deep: true, immediate: true })
+
+// 设置表单校验规则
+const rules = {
+  func: [{ required: true, message: '请选择任务函数', trigger: 'change' }],
+  job_id: [{ required: true, message: '请输入任务ID', trigger: 'blur' }],
+  trigger: [{ required: true, message: '请选择触发器类型', trigger: 'change' }]
+}
+
+// 运行时间设置表单项 - 时间间隔
+const runTimeInterval = [
+  {
+    name: 'days',
+    type: 'input',
+    label: '天数',
+    description: '几天执行一次',
+    placeholder: '请输入天数',
+    triggerArgs: true
+  },
+  {
+    name: 'hours',
+    type: 'input',
+    label: '小时',
+    description: '几小时执行一次',
+    placeholder: '请输入小时数',
+    triggerArgs: true
+  },
+  {
+    name: 'minutes',
+    type: 'input',
+    label: '分钟',
+    description: '几分钟执行一次',
+    placeholder: '请输入分钟数',
+    triggerArgs: true
+  },
+  {
+    name: 'seconds',
+    type: 'input',
+    label: '秒数',
+    description: '几秒执行一次',
+    placeholder: '请输入秒数',
+    triggerArgs: true
+  }
+]
+
+// 运行时间设置表单项 - cron表达式
+const runTimeCron = [
+  {
+    name: 'year',
+    type: 'input',
+    label: '年',
+    description: '指定年份',
+    placeholder: '请输入年份，如: 2023',
+    triggerArgs: true
+  },
+  {
+    name: 'month',
+    type: 'input',
+    label: '月',
+    description: '指定月份 (1-12)',
+    placeholder: '请输入月份，如: 3',
+    triggerArgs: true
+  },
+  {
+    name: 'day',
+    type: 'input',
+    label: '日',
+    description: '指定日期 (1-31)',
+    placeholder: '请输入日期，如: 15',
+    triggerArgs: true
+  },
+  {
+    name: 'week',
+    type: 'input',
+    label: '星期',
+    description: '指定星期几 (1-7，其中1是星期一)',
+    placeholder: '请输入星期几，如: 1',
+    triggerArgs: true
+  },
+  {
+    name: 'hour',
+    type: 'input',
+    label: '时',
+    description: '指定小时 (0-23)',
+    placeholder: '请输入小时，如: 10',
+    triggerArgs: true
+  },
+  {
+    name: 'minute',
+    type: 'input',
+    label: '分',
+    description: '指定分钟 (0-59)',
+    placeholder: '请输入分钟，如: 30',
+    triggerArgs: true
+  },
+  {
+    name: 'second',
+    type: 'input',
+    label: '秒',
+    description: '指定秒数 (0-59)',
+    placeholder: '请输入秒数，如: 0',
+    triggerArgs: true
+  }
+]
+
+// 改变任务函数
+const changeFunc = (value: string) => {
+  whatsFunc.value = value
+  formStepActive.value = 2
+  
+  // 初始化kwargs
+  if (value === 'another_task') {
+    formDataCopy.value.kwargs = { param: '' }
+  } else if (value === 'run_os_command' || value === 'run_python_command') {
+    formDataCopy.value.kwargs = { command: '' }
+  } else if (value === 'example_task') {
+    formDataCopy.value.kwargs = { arg1: '', arg2: '' }
+  } else {
+    formDataCopy.value.kwargs = {}
+  }
+}
+
+// 改变触发器类型
+const changeTrigger = (e: any) => {
+  const value = e.target ? e.target.value : e
+  whatsTrigger.value = value
+  formStepActive.value = 3
+  
+  // 根据触发器类型初始化参数
+  if (value === 'interval') {
+    formDataCopy.value.trigger_args = { days: '', hours: '', minutes: '', seconds: '' }
+  } else if (value === 'cron') {
+    formDataCopy.value.trigger_args = { 
+      year: '', month: '', day: '', week: '', 
+      hour: '', minute: '', second: '' 
+    }
+  } else if (value === 'date') {
+    formDataCopy.value.trigger_args = { run_date: '' }
+  }
+}
+
+// 获取函数描述
+const getFuncDescription = (funcName: string) => {
+  const funcOption = props.funcOptions.find(item => item.value === funcName)
+  return funcOption?.description || ''
+}
+
+// 生成随机ID
+const generateRandomId = () => {
+  const timestamp = Date.now().toString().slice(-6)
+  const randomStr = Math.random().toString(36).slice(2, 6)
+  formDataCopy.value.job_id = `job_${timestamp}_${randomStr}`
+}
+
+// 提交表单
+const submitForm = async () => {
+  try {
+    // 表单校验
+    await formRef.value.validate()
+    
+    // 参数校验
+    let valid = true
+    let errorMsg = ''
+    
+    // 检查任务ID
+    if (!formDataCopy.value.job_id) {
+      valid = false
+      errorMsg = '请输入任务ID'
+    }
+    
+    // 检查触发器参数
+    if (formDataCopy.value.trigger === 'interval') {
+      const { days, hours, minutes, seconds } = formDataCopy.value.trigger_args
+      if (!days && !hours && !minutes && !seconds) {
+        valid = false
+        errorMsg = '请至少设置一个时间间隔值'
+      }
+    } else if (formDataCopy.value.trigger === 'cron') {
+      // 至少需要设置minute和hour
+      if (!formDataCopy.value.trigger_args.hour || !formDataCopy.value.trigger_args.minute) {
+        valid = false
+        errorMsg = '请至少设置小时和分钟'
+      }
+    } else if (formDataCopy.value.trigger === 'date') {
+      if (!formDataCopy.value.trigger_args.run_date) {
+        valid = false
+        errorMsg = '请选择执行时间'
+      }
+    }
+    
+    // 检查特定函数的参数
+    if (formDataCopy.value.func === 'another_task') {
+      if (!formDataCopy.value.kwargs.param) {
+        valid = false
+        errorMsg = '请输入param参数的值'
+      }
+    } else if (formDataCopy.value.func === 'run_os_command' || formDataCopy.value.func === 'run_python_command') {
+      if (!formDataCopy.value.kwargs.command) {
+        valid = false
+        errorMsg = '请输入要执行的命令'
+      }
+    } else if (formDataCopy.value.func === 'example_task') {
+      if (!formDataCopy.value.kwargs.arg1 || !formDataCopy.value.kwargs.arg2) {
+        valid = false
+        errorMsg = '请输入arg1和arg2参数的值'
+      }
+    }
+    
+    if (!valid) {
+      message.error(errorMsg)
+      return
+    }
+    
+    // 提交表单
+    submitLoading.value = true
+    emit('submit', formDataCopy.value)
+    submitLoading.value = false
+  } catch (error) {
+    console.error('表单校验失败:', error)
+  }
+}
+
+// 关闭抽屉
+const close = () => {
+  emit('close')
+}
 </script>
 
 <style scoped lang="scss">
 .task-form {
-  padding: 0 20px;
-  
   .form-steps {
-    margin-bottom: 30px;
+    margin-bottom: 24px;
   }
   
   .form-section {
-    margin-bottom: 30px;
-    padding: 20px;
-    background-color: #f8f9fa;
-    border-radius: 8px;
+    margin-bottom: 24px;
+    padding: 16px;
+    background-color: #fafafa;
+    border-radius: 4px;
     
     .section-title {
+      font-size: 16px;
+      font-weight: 500;
       margin-top: 0;
-      margin-bottom: 20px;
-      font-size: 18px;
-      color: #303133;
-      border-bottom: 1px solid #dcdfe6;
-      padding-bottom: 10px;
+      margin-bottom: 16px;
+      color: rgba(0, 0, 0, 0.85);
     }
   }
   
   .form-helper-text {
     font-size: 12px;
-    color: #909399;
-    margin-top: 5px;
+    color: rgba(0, 0, 0, 0.45);
+    margin-top: 4px;
   }
   
   .trigger-description {
-    margin-top: 10px;
-    color: #909399;
     font-size: 13px;
+    color: rgba(0, 0, 0, 0.65);
+    margin-top: 8px;
   }
   
   .time-inputs {
-    .time-inputs-header {
-      margin-bottom: 10px;
+    &-header {
+      font-size: 14px;
       font-weight: 500;
-      color: #303133;
+      margin-bottom: 12px;
     }
   }
   
   .form-actions {
-    margin-top: 30px;
-    display: flex;
-    justify-content: center;
-  }
-}
-
-.func-option {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 0;
-  
-  .func-name {
-    font-weight: 600;
-    color: #303133;
-    font-size: 14px;
-    margin-bottom: 4px;
+    margin-top: 32px;
+    text-align: center;
   }
   
-  .func-description {
-    color: #606266;
-    font-size: 13px;
-    line-height: 1.5;
-    padding: 6px 8px;
-    background-color: #f8f9fa;
-    border-radius: 4px;
-    margin-top: 4px;
-    border-left: 3px solid #e6a23c;
+  .func-option {
+    .func-name {
+      font-weight: 500;
+    }
+    
+    .func-description {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.45);
+      margin-top: 4px;
+      white-space: normal;
+    }
   }
 }
 </style> 

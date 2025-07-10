@@ -1,11 +1,11 @@
 <template>
   <div class="task-list-container">
-    <el-card shadow="never">
-      <template #header>
+    <a-card :bordered="false" :shadow="false">
+      <template #title>
         <div class="card-header">
           <h2>可用任务</h2>
           <div class="header-actions">
-            <el-button type="primary" @click="goToJobList">查看计划任务</el-button>
+            <a-button type="primary" @click="goToJobList">查看计划任务</a-button>
           </div>
         </div>
       </template>
@@ -13,7 +13,7 @@
       <!-- 添加搜索和过滤功能 -->
       <div class="task-search mb-4">
         <div class="search-row">
-          <el-input
+          <a-input
             v-model="taskSearchKeyword"
             placeholder="搜索任务名称或描述"
             prefix-icon="Search"
@@ -24,7 +24,7 @@
           
           <!-- 添加分类过滤 -->
           <div class="category-filters" v-if="taskCategories.length > 0">
-            <el-tag 
+            <a-tag 
               v-for="category in taskCategories" 
               :key="category"
               :type="selectedCategory === category ? 'primary' : 'info'"
@@ -33,8 +33,8 @@
               @click="selectCategory(category)"
             >
               {{ category }}
-            </el-tag>
-            <el-tag 
+            </a-tag>
+            <a-tag 
               v-if="selectedCategory"
               type="danger"
               effect="plain"
@@ -42,32 +42,33 @@
               @click="selectedCategory = ''"
             >
               清除筛选
-            </el-tag>
+            </a-tag>
           </div>
         </div>
       </div>
       
       <div class="task-grid">
-        <el-card 
+        <a-card 
           v-for="item in filteredFuncRes" 
           :key="item.name" 
           class="task-box"
-          shadow="hover"
+          :bordered="false"
+          :hoverable="true"
         >
-          <template #header>
+          <template #title>
             <div class="task-header">
               <div class="title-with-category">
                 <h3 class="task-title">{{ item.name }}</h3>
-                <el-tag 
+                <a-tag 
                   size="small" 
                   effect="plain" 
                   :type="getTagTypeByCategory(item.category)"
                   class="category-label"
                 >
                   {{ item.category }}
-                </el-tag>
+                </a-tag>
               </div>
-              <el-button type="primary" plain size="large" @click="quickCreateTask(item)">创建任务</el-button>
+              <a-button type="primary" plain size="large" @click="quickCreateTask(item)">创建任务</a-button>
             </div>
           </template>
           
@@ -84,7 +85,7 @@
             <div class="task-return" v-if="item.return_value">
               <div class="section-title">返回值：</div>
               <div class="return-description">
-                <el-tag type="success" effect="light">{{ item.return_value.type }}</el-tag>
+                <a-tag type="success" effect="light">{{ item.return_value.type }}</a-tag>
                 <div class="return-details">
                   <div class="return-text">{{ item.return_value.description }}</div>
                   <div v-if="item.return_value.example" class="return-example">
@@ -97,27 +98,27 @@
             <!-- 参数部分 -->
             <div class="task-parameters" v-if="hasParameters(item)">
               <div class="section-title">参数：</div>
-              <el-descriptions :column="1" border>
+              <a-descriptions :column="1" :bordered="false">
                 <template v-for="(param, key) in item.parameters" :key="key">
-                  <el-descriptions-item :label="key">
-                    <el-tag type="info">{{ param.type || '未知类型' }}</el-tag>
+                  <a-descriptions-item :label="key">
+                    <a-tag type="info">{{ param.type || '未知类型' }}</a-tag>
                     <div class="param-details">
                       <span v-if="param.description" class="param-description">{{ param.description }}</span>
                       <span v-if="param.default !== undefined && param.default !== '无'" class="param-default">
                         默认值: <code>{{ param.default }}</code>
                       </span>
                       <span v-if="param.required" class="param-required">
-                        <el-tag size="small" type="danger">必填</el-tag>
+                        <a-tag size="small" type="danger">必填</a-tag>
                       </span>
                     </div>
-                  </el-descriptions-item>
+                  </a-descriptions-item>
                 </template>
-              </el-descriptions>
+              </a-descriptions>
             </div>
           </div>
-        </el-card>
+        </a-card>
       </div>
-    </el-card>
+    </a-card>
     
     <!-- 任务表单抽屉 -->
     <JobFormDrawer 
@@ -135,7 +136,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { message } from 'ant-design-vue'
 import _ from 'lodash'
 // @ts-ignore
 import JobFormDrawer from '../jobs/components/JobFormDrawer.vue'
@@ -211,7 +212,7 @@ const getFunc = async () => {
     // 如果没有数据，设置为空数组
     if (!tasksData || !Array.isArray(tasksData)) {
       console.error('API返回的数据格式不正确', response);
-      ElMessage.error('获取数据失败：数据格式异常');
+      message.error('获取数据失败：数据格式异常');
       tasksData = [];
     }
     
@@ -334,7 +335,7 @@ const getFunc = async () => {
     filterTasks();
   } catch (error) {
     console.error('获取任务列表失败', error);
-    ElMessage.error('获取任务列表失败');
+    message.error('获取任务列表失败');
   }
 }
 
@@ -400,13 +401,13 @@ const generateRandomId = () => {
 const submitForm = async (data: any) => {
   try {
     await addJob(data)
-    ElMessage.success('添加成功')
+    message.success('添加成功')
     drawer.value = false
     
     // 可以选择跳转到任务列表页面
     router.push('/jobs')
   } catch (error: any) {
-    ElMessage.error('添加失败：' + error.message)
+    message.error('添加失败：' + error.message)
   }
 }
 

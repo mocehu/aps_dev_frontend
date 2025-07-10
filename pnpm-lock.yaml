@@ -14,9 +14,6 @@ importers:
       axios:
         specifier: ^1.6.8
         version: 1.7.3
-      element-plus:
-        specifier: ^2.7.8
-        version: 2.7.8(vue@3.4.37)
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -389,11 +386,6 @@ packages:
   delayed-stream@1.0.0:
     resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
     engines: {node: '>=0.4.0'}
-
-  element-plus@2.7.8:
-    resolution: {integrity: sha512-h6dx2XihAbQaud0v+6O7Fy0b0G3YNplNVH7QnK3csTcvQd4y4raiyMRQpf9EKbRbTMdNrFsqAZrs9ok9DMcJHg==}
-    peerDependencies:
-      vue: ^3.2.0
 
   entities@5.0.0:
     resolution: {integrity: sha512-BeJFvFRJddxobhvEdm5GqHzRV/X+ACeuw0/BuuxsCh1EUZcAIz8+kYmBp/LrQuloy6K1f3a0M7+IhmZ7QnkISA==}
@@ -942,27 +934,6 @@ snapshots:
   dayjs@1.11.12: {}
 
   delayed-stream@1.0.0: {}
-
-  element-plus@2.7.8(vue@3.4.37):
-    dependencies:
-      '@ctrl/tinycolor': 3.6.1
-      '@element-plus/icons-vue': 2.3.1(vue@3.4.37)
-      '@floating-ui/dom': 1.6.10
-      '@popperjs/core': '@sxzz/popperjs-es@2.11.7'
-      '@types/lodash': 4.17.7
-      '@types/lodash-es': 4.17.12
-      '@vueuse/core': 9.13.0(vue@3.4.37)
-      async-validator: 4.2.5
-      dayjs: 1.11.12
-      escape-html: 1.0.3
-      lodash: 4.17.21
-      lodash-es: 4.17.21
-      lodash-unified: 1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.17.21)(lodash@4.17.21)
-      memoize-one: 6.0.0
-      normalize-wheel-es: 1.2.0
-      vue: 3.4.37
-    transitivePeerDependencies:
-      - '@vue/composition-api'
 
   entities@5.0.0: {}
 

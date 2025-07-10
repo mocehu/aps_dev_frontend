@@ -2,8 +2,8 @@
 // 导入axios
 import axios from 'axios';
 
-// 引入element-plus 美化报错
-import { ElMessage } from 'element-plus';
+// 引入ant-design-vue 美化报错
+import { message } from 'ant-design-vue';
 
 // 从环境变量获取 baseURL
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://192.168.2.78:8000';
@@ -29,10 +29,7 @@ request.interceptors.response.use(
         return response.data;
       } else {
         // 如果请求返回错误码，显示错误信息
-        ElMessage({
-          message: response.data.msg || '请求失败',
-          type: 'error'
-        });
+        message.error(response.data.msg || '请求失败');
         return Promise.reject(new Error(response.data.msg || '请求失败'));
       }
     }
@@ -41,10 +38,7 @@ request.interceptors.response.use(
   },
   (error) => {
     if (error.response && error.response.status) {
-      ElMessage({
-        message: error.message,
-        type: 'error'
-      });
+      message.error(error.message);
     }
     return Promise.reject(error);
   }

@@ -1,73 +1,61 @@
 <template>
   <div class="job-list-container">
-    <el-card shadow="never">
-      <template #header>
+    <a-card :bordered="false">
+      <template #title>
         <div class="card-header">
           <h2>计划任务</h2>
-          <el-button type="primary" @click="createJob">创建计划任务</el-button>
+          <a-button type="primary" @click="createJob">创建计划任务</a-button>
         </div>
       </template>
       
-      <el-table :data="jobTableData" border style="width: 100%">
-        <el-table-column prop="id" label="任务ID" width="120" sortable />
-        <el-table-column label="状态" width="120" align="center" sortable>
-          <template #default="{ row }">
-            <el-button
-              text
-              :icon="row.status === '已暂停' ? 'VideoPause' : 'VideoPlay'"
-              :type="row.status === '已暂停' ? 'danger' : 'success'"
-              @click="changeStatus(row.status, row)">
-              {{ row.status }}
-            </el-button>
+      <a-table
+        :dataSource="jobTableData"
+        :columns="columns"
+        :pagination="pagination"
+        @change="handleTableChange"
+        bordered
+      >
+        <template #bodyCell="{ column, record }">
+          <!-- 状态列 -->
+          <template v-if="column.key === 'status'">
+            <a-button
+              type="link"
+              :danger="record.status === '已暂停'"
+              @click="changeStatus(record.status, record)"
+            >
+              <template #icon>
+                <pause-outlined v-if="record.status === '已暂停'" />
+                <play-circle-outlined v-else />
+              </template>
+              {{ record.status }}
+            </a-button>
           </template>
-        </el-table-column>
-        <el-table-column label="下次执行时间" width="280" sortable>
-          <template #default="{ row }">
+          
+          <!-- 下次执行时间列 -->
+          <template v-if="column.key === 'next_run_time'">
             <div class="next-run-time">
-              <el-tag 
-                :type="getTimeTagType(row.next_run_time)" 
-                effect="plain" 
-                size="large"
-                class="time-tag"
-              >
-                <div class="time-content">
-                  <el-icon class="time-icon"><Calendar /></el-icon>
-                  <span>{{ formatNextRunTime(row.next_run_time) }}</span>
-                </div>
-              </el-tag>
-              <div class="time-relative" v-if="row.next_run_time">
-                {{ getRelativeTime(row.next_run_time) }}
+              <div :class="['time-tag', `time-tag-${getTimeTagType(record.next_run_time)}`]">
+                <calendar-outlined style="margin-right: 6px" />
+                <span>{{ formatNextRunTime(record.next_run_time) }}</span>
+              </div>
+              <div class="time-relative" v-if="record.next_run_time">
+                {{ getRelativeTime(record.next_run_time) }}
               </div>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column prop="trigger" label="触发器类型" />
-        <el-table-column prop="func" label="任务函数" width="200" />
-        <el-table-column prop="kwargs" label="参数" width="120" />
-        <el-table-column label="操作" width="400">
-          <template #default="{ row }">
-            <el-button text size="small" type="primary" @click="editJob(row)">编辑</el-button>
-            <el-button text size="small" type="danger" @click="deleteJob(row)">删除</el-button>
-            <el-button text size="small" type="primary" @click="viewJobDetail(row)">详情</el-button>
-            <el-button text size="small" type="primary" @click="runJobNow(row)">立即执行</el-button>
+          
+          <!-- 操作列 -->
+          <template v-if="column.key === 'action'">
+            <a-space>
+              <a-button type="link" @click="editJob(record)">编辑</a-button>
+              <a-button type="link" danger @click="deleteJob(record)">删除</a-button>
+              <a-button type="link" @click="viewJobDetail(record)">详情</a-button>
+              <a-button type="link" @click="runJobNow(record)">立即执行</a-button>
+            </a-space>
           </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <el-config-provider :locale="zhCn">
-          <el-pagination
-            v-model:current-page="jobCurrentPage"
-            v-model:page-size="jobPageSize"
-            :page-sizes="[10, 20, 30, 40]"
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="total"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
-        </el-config-provider>
-      </div>
-    </el-card>
+        </template>
+      </a-table>
+    </a-card>
     
     <!-- 任务表单抽屉 -->
     <JobFormDrawer 
@@ -82,15 +70,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { ElConfigProvider } from 'element-plus'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import { message, Modal } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
 import _ from 'lodash'
+import { 
+  CalendarOutlined, 
+  PauseOutlined, 
+  PlayCircleOutlined 
+} from '@ant-design/icons-vue'
 
 // 初始化dayjs插件
 dayjs.extend(relativeTime)
@@ -113,9 +104,6 @@ const router = useRouter()
 
 // 数据
 const jobTableData = ref([])
-const jobCurrentPage = ref(1)
-const jobPageSize = ref(10)
-const total = ref(0)
 const drawer = ref(false)
 const drawerTitle = ref('')
 const formData = ref({})
@@ -131,6 +119,64 @@ const initFormData = ref({
   kwargs: {},
   job_id: '',
   trigger_args: {}
+})
+
+// 表格配置
+const columns = [
+  {
+    title: '任务ID',
+    dataIndex: 'id',
+    key: 'id',
+    sorter: true,
+    width: 120,
+  },
+  {
+    title: '状态',
+    dataIndex: 'status',
+    key: 'status',
+    width: 120,
+    align: 'center',
+    sorter: true
+  },
+  {
+    title: '下次执行时间',
+    dataIndex: 'next_run_time',
+    key: 'next_run_time',
+    width: 280,
+    sorter: true
+  },
+  {
+    title: '触发器类型',
+    dataIndex: 'trigger',
+    key: 'trigger'
+  },
+  {
+    title: '任务函数',
+    dataIndex: 'func',
+    key: 'func',
+    width: 200
+  },
+  {
+    title: '参数',
+    dataIndex: 'kwargs',
+    key: 'kwargs',
+    width: 120
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 300
+  }
+]
+
+// 分页配置
+const pagination = reactive({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+  showSizeChanger: true,
+  pageSizeOptions: ['10', '20', '30', '40'],
+  showTotal: (total: number) => `共 ${total} 条数据`
 })
 
 // 方法
@@ -164,17 +210,13 @@ const getjobTableData = async (page = 1, pageSize = 10) => {
     }
     return item
   })
-  total.value = jobsData.length
+  pagination.total = jobsData.length
 }
 
-const handleSizeChange = (val: number) => {
-  jobPageSize.value = val
-  getjobTableData(jobCurrentPage.value, jobPageSize.value)
-}
-
-const handleCurrentChange = (val: number) => {
-  jobCurrentPage.value = val
-  getjobTableData(jobCurrentPage.value, jobPageSize.value)
+const handleTableChange = (pag: any, filters: any, sorter: any) => {
+  pagination.current = pag.current
+  pagination.pageSize = pag.pageSize
+  getjobTableData(pagination.current, pagination.pageSize)
 }
 
 const createJob = async () => {
@@ -250,18 +292,17 @@ const editJob = async (row: any) => {
 }
 
 const deleteJob = (row: any) => {
-  ElMessageBox.confirm(
-    '确认删除该任务?',
-    '提示',
-    {
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      type: 'warning',
+  Modal.confirm({
+    title: '提示',
+    content: '确认删除该任务?',
+    okText: '确认',
+    cancelText: '取消',
+    okType: 'danger',
+    onOk: async() => {
+      await apiDeleteJob(row.id)
+      message.success('删除成功')
+      getjobTableData(pagination.current, pagination.pageSize)
     }
-  ).then(async() => {
-    await apiDeleteJob(row.id)
-    ElMessage.success('删除成功')
-    getjobTableData(jobCurrentPage.value, jobPageSize.value)
   })
 }
 
@@ -271,19 +312,19 @@ const viewJobDetail = (row: any) => {
 
 const runJobNow = async (row: any) => {
   const res: any = await immediateJob(row)
-  ElMessage.success(res.msg || res.message || '任务已立即执行')
-  getjobTableData(jobCurrentPage.value, jobPageSize.value)
+  message.success(res.msg || res.message || '任务已立即执行')
+  getjobTableData(pagination.current, pagination.pageSize)
 }
 
 const changeStatus = async (status: string, row: any) => {
   if(status === '已暂停') {
     await resumeJob(row.id)
-    ElMessage.success('任务恢复')
+    message.success('任务恢复')
   } else {
     await pauseJob(row.id)
-    ElMessage.success('任务暂停')
+    message.success('任务暂停')
   }
-  getjobTableData(jobCurrentPage.value, jobPageSize.value)
+  getjobTableData(pagination.current, pagination.pageSize)
 }
 
 const submitForm = async (data: any) => {
@@ -292,12 +333,12 @@ const submitForm = async (data: any) => {
       data.kwargs = {}
     }
     await apiEditJob(data)
-    ElMessage.success('修改成功')
+    message.success('修改成功')
   } else {
     await addJob(data)
-    ElMessage.success('添加成功')
+    message.success('添加成功')
   }
-  getjobTableData(jobCurrentPage.value, jobPageSize.value)
+  getjobTableData(pagination.current, pagination.pageSize)
   drawer.value = false
 }
 
@@ -399,36 +440,16 @@ onMounted(() => {
     }
   }
   
-  .pagination-container {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
-  
   .next-run-time {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     
-    .time-tag {
-      width: 100%;
-      margin-bottom: 4px;
-      
-      .time-content {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        
-        .time-icon {
-          margin-right: 6px;
-        }
-      }
-    }
-    
     .time-relative {
       font-size: 12px;
-      color: #909399;
+      color: rgba(0, 0, 0, 0.45);
       padding-left: 4px;
+      margin-top: 4px;
     }
   }
 }

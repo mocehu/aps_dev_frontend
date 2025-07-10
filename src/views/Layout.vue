@@ -1,106 +1,109 @@
 <template>
-  <div class="app-container">
+  <a-layout class="app-container">
     <!-- 顶部导航栏 -->
-    <el-header class="app-header">
+    <a-layout-header class="app-header">
       <div class="header-title">任务调度系统</div>
-      <div class="header-menu">
-        <el-menu
-          mode="horizontal"
-          :router="true"
-          :default-active="activeMenu"
-          class="nav-menu"
-        >
-          <el-menu-item index="/jobs">
-            <el-icon><Calendar /></el-icon>
-            <span>计划任务</span>
-          </el-menu-item>
-          <el-menu-item index="/tasks">
-            <el-icon><List /></el-icon>
-            <span>可用任务</span>
-          </el-menu-item>
-          <el-menu-item index="/logs">
-            <el-icon><Document /></el-icon>
-            <span>日志信息</span>
-          </el-menu-item>
-        </el-menu>
-      </div>
+      <a-menu
+        mode="horizontal"
+        v-model:selectedKeys="selectedKeys"
+        class="nav-menu"
+      >
+        <a-menu-item key="/jobs">
+          <template #icon><calendar-outlined /></template>
+          <router-link to="/jobs">计划任务</router-link>
+        </a-menu-item>
+        <a-menu-item key="/tasks">
+          <template #icon><unordered-list-outlined /></template>
+          <router-link to="/tasks">可用任务</router-link>
+        </a-menu-item>
+        <a-menu-item key="/logs">
+          <template #icon><file-outlined /></template>
+          <router-link to="/logs">日志信息</router-link>
+        </a-menu-item>
+      </a-menu>
       <div class="header-actions">
         <!-- 可以添加其他操作按钮，如用户信息等 -->
       </div>
-    </el-header>
+    </a-layout-header>
     
     <!-- 主内容区域 -->
-    <el-main class="app-main">
+    <a-layout-content class="app-main">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
         </transition>
       </router-view>
-    </el-main>
+    </a-layout-content>
     
     <!-- 底部区域 -->
-    <el-footer class="app-footer">
+    <a-layout-footer class="app-footer">
       <div class="footer-content">
         <span>© {{ new Date().getFullYear() }} 任务调度系统</span>
       </div>
-    </el-footer>
-  </div>
+    </a-layout-footer>
+  </a-layout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Calendar, List, Document } from '@element-plus/icons-vue'
+import { 
+  CalendarOutlined, 
+  UnorderedListOutlined, 
+  FileOutlined 
+} from '@ant-design/icons-vue'
 
 const route = useRoute()
 
 // 计算当前激活的菜单项
-const activeMenu = computed(() => {
+const selectedKeys = computed(() => {
   const { path } = route
   if (path.startsWith('/jobs/')) {
-    return '/jobs'
+    return ['/jobs']
   }
-  return path
+  return [path]
 })
 </script>
 
 <style scoped lang="scss">
 .app-container {
-  display: flex;
-  flex-direction: column;
   min-height: 100vh;
-  background-color: #f5f7fa;
 }
 
 .app-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 20px;
   background-color: #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  height: 60px;
+  height: 64px;
+  line-height: 64px;
   
   .header-title {
     font-size: 20px;
     font-weight: 600;
-    color: #409EFF;
+    color: #1890ff;
+    margin-right: 30px;
   }
   
-  .header-menu {
+  .nav-menu {
     flex: 1;
-    display: flex;
-    justify-content: center;
     
-    .nav-menu {
-      border-bottom: none;
+    a {
+      color: inherit;
+      text-decoration: none;
     }
+  }
+  
+  .header-actions {
+    margin-left: auto;
   }
 }
 
 .app-main {
-  padding: 20px;
-  flex: 1;
+  padding: 24px;
+  background-color: #f0f2f5;
+  min-height: calc(100vh - 64px - 70px);
 }
 
 .app-footer {
@@ -108,10 +111,10 @@ const activeMenu = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 50px;
+  height: 70px;
   
   .footer-content {
-    color: #909399;
+    color: rgba(0, 0, 0, 0.45);
     font-size: 14px;
   }
 }

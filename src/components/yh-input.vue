@@ -1,42 +1,42 @@
 <template>
-  <el-input
-    v-for="item in props.data"
-    :key="item.model"
-    :min="item.min"
-    :max="item.max"
-    :maxlength="item.maxlength"
-    v-model.number="props.formData.trigger_args[item.model]"
-    :type="item.type"
-    :style="{ width: item.width }"
-    :placeholder="item.placeholder"
-    class="yh-input"
-    @blur="(e: Event) => limitSize(e, item)">
-    <template v-if="item.perfixSlot" #prefix>
-      <span>{{ item.perfixSlot }}</span>
-    </template>
-    <template v-if="item.suffixSlot" #suffix>
-      <span>{{ item.suffixSlot }}</span>
-    </template>
-  </el-input>
+  <div class="yh-inputs">
+    <div v-for="item in props.data" :key="item.name" class="yh-input">
+      <a-input-number
+        v-if="item.type === 'number'"
+        v-model:value="props.formData.trigger_args[item.name]"
+        :placeholder="item.placeholder"
+        :min="0"
+        :max="999"
+        @blur="(e: FocusEvent) => limitSize(e, item)"
+      >
+        <template #addonAfter>{{ item.label }}</template>
+      </a-input-number>
+      <a-input
+        v-else
+        v-model:value="props.formData.trigger_args[item.name]"
+        :placeholder="item.placeholder"
+        @blur="(e: FocusEvent) => limitSize(e, item)"
+      >
+        <template #addonAfter>{{ item.label }}</template>
+      </a-input>
+      <div class="input-description">{{ item.description }}</div>
+    </div>
+  </div>
 </template>
+
 <script setup lang="ts">
-  import { defineProps } from 'vue'
-  
   interface InputItem {
-    model: string;
-    min: number;
-    max: number;
-    maxlength: number;
+    name: string;
     type: string;
-    width: string;
+    label: string;
+    description: string;
     placeholder: string;
-    perfixSlot?: string;
-    suffixSlot?: string;
+    triggerArgs: boolean;
   }
 
   interface FormData {
     trigger_args: {
-      [key: string]: number | null | string;
+      [key: string]: number | string | null;
     };
     [key: string]: any;
   }
@@ -47,26 +47,43 @@
   }>()
   
   //methods
-  const limitSize = (e: Event, item: InputItem) => {
+  const limitSize = (e: FocusEvent, item: InputItem) => {
     const target = e.target as HTMLInputElement;
     if (target.value) {
-      if(+target.value > item.max) {
-        props.formData.trigger_args[item.model] = item.max;
-      }
-      if(+target.value < item.min) {
-        props.formData.trigger_args[item.model] = item.min;
-      }
-      // Ensure the value is stored as a number
-      if(item.type === 'number') {
-        props.formData.trigger_args[item.model] = Number(props.formData.trigger_args[item.model]);
+      if (item.type === 'number') {
+        const val = Number(target.value);
+        if (isNaN(val)) {
+          props.formData.trigger_args[item.name] = 0;
+        } else {
+          props.formData.trigger_args[item.name] = Math.max(0, Math.min(999, val));
+        }
       }
     } else {
-      props.formData.trigger_args[item.model] = item.type === 'number' ? 0 : null;
+      props.formData.trigger_args[item.name] = item.type === 'number' ? 0 : '';
     }
   }
 </script>
+
 <style lang='scss' scoped>
- .yh-input {
-   margin: 8px;
- }
+.yh-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  
+  .yh-input {
+    width: calc(50% - 8px);
+    
+    .input-description {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.45);
+      margin-top: 4px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .yh-inputs .yh-input {
+    width: 100%;
+  }
+}
 </style>

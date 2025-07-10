@@ -14,68 +14,42 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* 函数选择下拉菜单样式 */
+/* 自定义下拉菜单样式 */
 .func-select-dropdown {
   max-width: 500px !important;
   min-width: 350px !important;
 }
 
-.func-select-dropdown .el-select-dropdown__item {
-  height: auto;
-  padding: 6px 12px;
-  line-height: 1.5;
-  white-space: normal;
-}
-
-.func-select-dropdown .el-select-dropdown__item.selected {
-  background-color: #f0f9eb;
-}
-
-.func-select-dropdown .el-select-dropdown__item.hover {
-  background-color: #f5f7fa;
-}
-
-.func-select-dropdown .el-select-dropdown__item:hover {
-  background-color: #f5f7fa;
-}
-
-.func-select-dropdown .el-select-dropdown__item.selected.hover {
-  background-color: #e6f3d9;
-}
-
-/* 优化alert组件中的描述文本 */
-.func-selected-description .el-alert__title {
-  font-size: 13px !important;
-  line-height: 1.6 !important;
-  white-space: normal !important;
-  word-break: break-word !important;
-}
-
-.func-selected-description .el-alert__icon {
-  font-size: 16px !important;
-  color: #409EFF !important;
-}
-
 /* 时间标签样式 */
-.time-tag.el-tag--large {
+.time-tag {
+  display: inline-block;
   padding: 6px 10px;
   font-size: 14px;
   line-height: 1.5;
+  border-radius: 2px;
 }
 
-.time-tag.el-tag--danger.is-plain {
-  background-color: #fff0f0;
+.time-tag-danger {
+  color: #ff4d4f;
+  background-color: #fff1f0;
+  border: 1px solid #ffccc7;
 }
 
-.time-tag.el-tag--warning.is-plain {
-  background-color: #fdf6ec;
+.time-tag-warning {
+  color: #faad14;
+  background-color: #fffbe6;
+  border: 1px solid #ffe58f;
 }
 
-.time-tag.el-tag--success.is-plain {
-  background-color: #f0f9eb;
+.time-tag-success {
+  color: #52c41a;
+  background-color: #f6ffed;
+  border: 1px solid #b7eb8f;
 }
 
-.time-tag.el-tag--info.is-plain {
-  background-color: #f4f4f5;
+.time-tag-info {
+  color: #1677ff;
+  background-color: #e6f4ff;
+  border: 1px solid #91caff;
 }
 </style>
