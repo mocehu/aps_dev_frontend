@@ -7,7 +7,7 @@
         :placeholder="item.placeholder"
         :min="0"
         :max="999"
-        @blur="(e: FocusEvent) => limitSize(e, item)"
+        :precision="0"
       >
         <template #addonAfter>{{ item.label }}</template>
       </a-input-number>
@@ -15,7 +15,6 @@
         v-else
         v-model:value="props.formData.trigger_args[item.name]"
         :placeholder="item.placeholder"
-        @blur="(e: FocusEvent) => limitSize(e, item)"
       >
         <template #addonAfter>{{ item.label }}</template>
       </a-input>
@@ -45,23 +44,6 @@
     data: InputItem[];
     formData: FormData;
   }>()
-  
-  //methods
-  const limitSize = (e: FocusEvent, item: InputItem) => {
-    const target = e.target as HTMLInputElement;
-    if (target.value) {
-      if (item.type === 'number') {
-        const val = Number(target.value);
-        if (isNaN(val)) {
-          props.formData.trigger_args[item.name] = 0;
-        } else {
-          props.formData.trigger_args[item.name] = Math.max(0, Math.min(999, val));
-        }
-      }
-    } else {
-      props.formData.trigger_args[item.name] = item.type === 'number' ? 0 : '';
-    }
-  }
 </script>
 
 <style lang='scss' scoped>

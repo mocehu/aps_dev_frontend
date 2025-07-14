@@ -2,10 +2,11 @@
   <a-layout class="app-container">
     <!-- 顶部导航栏 -->
     <a-layout-header class="app-header">
-      <div class="header-title">任务调度系统</div>
+      <div class="header-title">定时任务管理</div>
       <a-menu
         mode="horizontal"
-        v-model:selectedKeys="selectedKeys"
+        :selectedKeys="activeKeys"
+        @update:selectedKeys="updateSelectedKeys"
         class="nav-menu"
       >
         <a-menu-item key="/jobs">
@@ -35,17 +36,12 @@
       </router-view>
     </a-layout-content>
     
-    <!-- 底部区域 -->
-    <a-layout-footer class="app-footer">
-      <div class="footer-content">
-        <span>© {{ new Date().getFullYear() }} 任务调度系统</span>
-      </div>
-    </a-layout-footer>
+
   </a-layout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { 
   CalendarOutlined, 
@@ -54,6 +50,7 @@ import {
 } from '@ant-design/icons-vue'
 
 const route = useRoute()
+const activeKeys = ref<string[]>([])
 
 // 计算当前激活的菜单项
 const selectedKeys = computed(() => {
@@ -63,6 +60,16 @@ const selectedKeys = computed(() => {
   }
   return [path]
 })
+
+// 监听计算属性的变化，并更新activeKeys
+watch(selectedKeys, (newValue) => {
+  activeKeys.value = newValue
+}, { immediate: true })
+
+// 更新选中的菜单项
+const updateSelectedKeys = (keys: string[]) => {
+  activeKeys.value = keys
+}
 </script>
 
 <style scoped lang="scss">

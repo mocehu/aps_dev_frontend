@@ -1,210 +1,296 @@
 <template>
   <div class="job-detail-container">
-    <a-card :bordered="false" :shadow="false">
-      <template #title>
-        <div class="detail-log-header">
-          <div class="header-left">
-            <a-button type="primary" plain icon="Back" @click="goBack" class="back-button">返回任务列表</a-button>
-            <span class="header-title" v-if="detailJobsLog">{{ detailJobsLog.func }} 任务执行记录</span>
-            <span class="header-title" v-else>任务执行记录</span>
+    <div class="detail-header">
+      <div class="header-left">
+        <a-button type="primary" @click="goBack" class="back-button">
+          <template #icon><arrow-left-outlined /></template>
+          返回任务列表
+        </a-button>
+      </div>
+    </div>
+    
+    <div class="detail-log-container">
+      <!-- 任务基本信息卡片 -->
+      <a-card class="task-info-card" :bordered="true" :hoverable="true" v-if="detailJobsLog">
+        <template #title>
+          <div class="card-header">
+            <info-circle-outlined />
+            <span>任务基本信息</span>
           </div>
-          <div class="header-right">
-            <a-tag type="info" effect="plain" size="large" v-if="detailJobsLog">任务ID: {{ detailJobsLog.id }}</a-tag>
-            <a-tag type="info" effect="plain" size="large" v-else>正在加载...</a-tag>
-          </div>
-        </div>
-      </template>
-      
-      <div class="detail-log-container">
-        <!-- 任务基本信息卡片 -->
-        <a-card class="task-info-card" :bordered="false" :hoverable="true" v-if="detailJobsLog">
-          <template #title>
-            <div class="card-header">
-              <span>任务基本信息</span>
-            </div>
-          </template>
-          <a-descriptions :column="2" :bordered="false">
-            <a-descriptions-item label="任务函数">{{ detailJobsLog.func }}</a-descriptions-item>
-            <a-descriptions-item label="触发器类型">{{ detailJobsLog.trigger }}</a-descriptions-item>
-            <a-descriptions-item label="参数">{{ detailJobsLog.kwargs || '无' }}</a-descriptions-item>
-            <a-descriptions-item label="下次执行时间">
-              <div class="next-run-time">
-                <a-tag 
-                  :type="getTimeTagType(detailJobsLog.next_run_time)" 
-                  effect="plain" 
-                  size="default"
-                >
-                  {{ formatNextRunTime(detailJobsLog.next_run_time) }}
-                </a-tag>
-                <div class="time-relative" v-if="detailJobsLog.next_run_time">
-                  {{ getRelativeTime(detailJobsLog.next_run_time) }}
-                </div>
-              </div>
-            </a-descriptions-item>
-            <a-descriptions-item label="状态">
-              <a-tag :type="detailJobsLog.status === '已暂停' ? 'danger' : 'success'">
-                {{ detailJobsLog.status }}
+        </template>
+        
+        <a-descriptions :column="2" bordered>
+          <a-descriptions-item label="任务ID">
+            <span class="id-text">{{ detailJobsLog.id }}</span>
+          </a-descriptions-item>
+          <a-descriptions-item label="任务函数">
+            <span class="func-text">{{ detailJobsLog.func }}</span>
+          </a-descriptions-item>
+          <a-descriptions-item label="触发器类型">
+            <a-tag :color="getTriggerColor(detailJobsLog.trigger)">{{ detailJobsLog.trigger }}</a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="参数">
+            <a-tooltip v-if="detailJobsLog.kwargs" :title="formatTooltipContent(detailJobsLog.kwargs)">
+              <div class="kwargs-content">{{ detailJobsLog.kwargs || '无' }}</div>
+            </a-tooltip>
+            <span v-else>无</span>
+          </a-descriptions-item>
+          <a-descriptions-item label="下次执行时间">
+            <div class="next-run-time">
+              <a-tag :color="getTimeTagColor(detailJobsLog.next_run_time)" class="time-tag">
+                <calendar-outlined style="margin-right: 6px" />
+                <span>{{ formatNextRunTime(detailJobsLog.next_run_time) }}</span>
               </a-tag>
-            </a-descriptions-item>
-            <a-descriptions-item label="操作">
-              <a-button-group>
-                <a-button size="small" type="primary" @click="editJob(detailJobsLog)">编辑</a-button>
-                <a-button size="small" :type="detailJobsLog.status === '已暂停' ? 'success' : 'warning'" @click="changeStatus(detailJobsLog.status, detailJobsLog)">
-                  {{ detailJobsLog.status === '已暂停' ? '恢复' : '暂停' }}
-                </a-button>
-                <a-button size="small" type="danger" @click="deleteJob(detailJobsLog)">删除</a-button>
-                <a-button size="small" type="success" @click="runJobNow(detailJobsLog)">立即执行</a-button>
-              </a-button-group>
-            </a-descriptions-item>
-          </a-descriptions>
-        </a-card>
-        
-        <a-card class="task-info-card" :bordered="false" :hoverable="true" v-else>
+              <span class="time-relative" v-if="detailJobsLog.next_run_time">
+                {{ getRelativeTime(detailJobsLog.next_run_time) }}
+              </span>
+            </div>
+          </a-descriptions-item>
+          <a-descriptions-item label="状态">
+            <a-tag :color="detailJobsLog.status === '已暂停' ? 'red' : 'green'" class="status-tag" :style="{ width: 'auto', padding: '0 8px' }">
+              <template #icon>
+                <pause-outlined v-if="detailJobsLog.status === '已暂停'" />
+                <play-circle-outlined v-else />
+              </template>
+              {{ detailJobsLog.status }}
+            </a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="操作">
+            <div class="action-buttons">
+              <a-button type="primary" size="small" @click="editJob(detailJobsLog)" class="action-btn edit-btn">
+                <template #icon><edit-outlined /></template>
+                编辑
+              </a-button>
+              <a-button 
+                :type="detailJobsLog.status === '已暂停' ? 'success' : 'warning'" 
+                size="small" 
+                @click="changeStatus(detailJobsLog.status, detailJobsLog)"
+                class="action-btn status-btn"
+              >
+                <template #icon>
+                  <pause-outlined v-if="detailJobsLog.status !== '已暂停'" />
+                  <play-circle-outlined v-else />
+                </template>
+                {{ detailJobsLog.status === '已暂停' ? '恢复' : '暂停' }}
+              </a-button>
+              <a-button type="primary" size="small" @click="runJobNow(detailJobsLog)" class="action-btn run-btn">
+                <template #icon><thunderbolt-outlined /></template>
+                执行
+              </a-button>
+              <a-button danger size="small" @click="deleteJob(detailJobsLog)" class="action-btn delete-btn">
+                <template #icon><delete-outlined /></template>
+                删除
+              </a-button>
+            </div>
+          </a-descriptions-item>
+        </a-descriptions>
+      </a-card>
+      
+      <a-card class="task-info-card" :bordered="true" :hoverable="true" v-else>
+        <template #title>
+          <div class="card-header">
+            <info-circle-outlined />
+            <span>任务基本信息</span>
+          </div>
+        </template>
+        <div class="loading-placeholder">
+          <a-spin />
+          <div class="loading-text">正在加载任务信息...</div>
+        </div>
+      </a-card>
+      
+      <!-- 日志筛选区域 -->
+      <a-card class="log-filter-card" :bordered="true" v-if="detailJobsLog">
+        <template #title>
+          <div class="card-header">
+            <filter-outlined />
+            <span>日志筛选</span>
+          </div>
+        </template>
+        <div class="filter-content">
+          <a-select v-model:value="searchSelect" allowClear placeholder="执行状态" @change="searchSelectValue" style="width: 120px;">
+            <a-select-option
+              v-for="item in statusOptions"
+              :key="item.value"
+              :value="item.value"
+            >
+              {{ item.label }}
+            </a-select-option>
+          </a-select>
+          
+          <a-config-provider :locale="zhCn">
+            <a-range-picker
+              v-model:value="searchDate"
+              format="YYYY-MM-DD HH:mm:ss"
+              :show-time="{ format: 'HH:mm:ss' }"
+              @change="searchDateValue"
+              style="margin: 0 10px; width: 400px;"
+              :placeholder="['开始时间', '结束时间']"
+            />
+          </a-config-provider>
+
+          <a-button type="primary" @click="searchLog">
+            <template #icon><search-outlined /></template>
+            搜索
+          </a-button>
+          <a-button @click="resetSearch" style="margin-left: 8px;">
+            <template #icon><reload-outlined /></template>
+            重置
+          </a-button>
+        </div>
+      </a-card>
+      
+      <!-- 日志列表和详情 -->
+      <div class="log-detail-section" v-if="detailJobsLog">
+        <!-- 左侧日志列表 -->
+        <a-card class="log-list-card" :bordered="true">
           <template #title>
             <div class="card-header">
-              <span>任务基本信息</span>
+              <history-outlined />
+              <span>执行记录</span>
+              <a-badge :count="missionLogTotal" :overflowCount="99" />
             </div>
           </template>
-          <div class="loading-placeholder">
-            <a-empty description="正在加载任务信息..." />
-          </div>
-        </a-card>
-        
-        <!-- 日志筛选区域 -->
-        <div class="log-filter-section" v-if="detailJobsLog">
-          <div class="filter-title">日志筛选</div>
-          <div class="filter-content">
-            <a-select v-model="searchSelect" clearable placeholder="执行状态" @change="searchSelectValue">
-              <a-option
-                v-for="item in statusOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </a-select>
+          
+          <div class="log-scroll-container">
+            <a-empty v-if="loading" description="加载中..." style="padding: 30px;">
+              <template #image>
+                <a-spin />
+              </template>
+            </a-empty>
             
-            <a-config-provider :locale="zhCn">
-              <a-date-picker
-                v-model="searchDate"
-                type="datetimerange"
-                start-placeholder="开始时间"
-                end-placeholder="结束时间"
-                format="YYYY-MM-DD HH:mm:ss"
-                value-format="YYYY-MM-DDTHH:mm:ss"
-                @change="searchDateValue"
-                style="margin: 0 10px;"
-              />
-            </a-config-provider>
-
-            <a-button type="primary" @click="searchLog">搜索</a-button>
-            <a-button @click="resetSearch">重置</a-button>
-          </div>
-        </div>
-        
-        <!-- 日志列表和详情 -->
-        <div class="log-detail-section" v-if="detailJobsLog">
-          <!-- 左侧日志列表 -->
-          <div class="log-list">
-            <div class="log-list-header">
-              <span>执行记录</span>
-              <a-badge :value="missionLogTotal" :max="99" type="info" />
-            </div>
-            
-            <a-scrollbar height="400px">
-              <div v-if="missionLogTableData.length > 0">
-                <div 
-                  v-for="(item, index) in missionLogTableData" 
-                  :key="item.id || index" 
-                  :class="['log-item', {'active': selectedLogIndex === index}]" 
-                  @click="showDetailLogMessage(item, index)"
-                >
-                  <div class="log-item-left">
+            <div v-else-if="missionLogTableData.length > 0">
+              <div 
+                v-for="(item, index) in missionLogTableData" 
+                :key="item.id || index" 
+                :class="['log-item', {'active': selectedLogIndex === index}]" 
+                @click="showDetailLogMessage(item, index)"
+              >
+                <div class="log-item-header">
+                  <div class="log-item-status">
                     <a-tag 
-                      :type="item.status ? 'success' : 'danger'" 
-                      size="small" 
-                      effect="dark"
+                      :color="item.status ? 'green' : 'red'" 
+                      size="small"
                     >
+                      <template #icon>
+                        <check-circle-outlined v-if="item.status" />
+                        <close-circle-outlined v-else />
+                      </template>
                       {{ item.status ? '成功' : '失败' }}
                     </a-tag>
                   </div>
-                  <div class="log-item-center">
-                    <div class="log-time">{{ formatLogTime(item.timestamp) }}</div>
-                    <div class="log-message">{{ truncateMessage(item.message) }}</div>
+                  <div class="log-time">
+                    <clock-circle-outlined />
+                    {{ formatLogTime(item.timestamp) }}
                   </div>
-                  <div class="log-item-right">
-                    <span class="log-duration">{{ formatDuration(item.duration) }}</span>
+                </div>
+                <div class="log-item-content">
+                  <div class="log-message">{{ truncateMessage(item.message) }}</div>
+                  <div class="log-duration">
+                    <hourglass-outlined />
+                    <span>{{ formatDuration(item.duration) }}</span>
                   </div>
                 </div>
               </div>
-              <a-empty v-else description="暂无日志记录" />
-            </a-scrollbar>
-            
-            <div class="log-pagination">
-              <a-config-provider :locale="zhCn">
-                <a-pagination
-                  v-model:current-page="missionLogCurrentPage"
-                  v-model:page-size="missionLogPageSize"
-                  :page-sizes="[5, 10, 20, 30]"
-                  layout="total, sizes, prev, pager, next"
-                  :total="missionLogTotal"
-                  @size-change="missionLogSizeChange"
-                  @current-change="missionLogCurrentChange"
-                  size="small"
-                />
-              </a-config-provider>
             </div>
+            <a-empty v-else description="暂无日志记录" />
           </div>
           
-          <!-- 右侧日志详情 -->
-          <div v-if="detailLogMessage && Object.keys(detailLogMessage).length > 0" class="log-detail">
-            <div class="log-detail-header">
+          <div class="pagination-container">
+            <a-config-provider :locale="zhCn">
+              <a-pagination
+                v-model:current="missionLogCurrentPage"
+                v-model:pageSize="missionLogPageSize"
+                :pageSizeOptions="[5, 10, 20, 30]"
+                showSizeChanger
+                :showTotal="(total: number) => `共 ${total} 条`"
+                :total="missionLogTotal"
+                @change="handlePaginationChange"
+                size="small"
+              />
+            </a-config-provider>
+          </div>
+        </a-card>
+        
+        <!-- 右侧日志详情 -->
+        <a-card v-if="detailLogMessage && Object.keys(detailLogMessage).length > 0" class="log-detail-card" :bordered="true">
+          <template #title>
+            <div class="card-header">
+              <file-text-outlined />
               <span>执行详情</span>
               <a-tag 
-                :type="detailLogMessage.status ? 'success' : 'danger'" 
-                effect="dark"
+                :color="detailLogMessage.status ? 'green' : 'red'"
               >
+                <template #icon>
+                  <check-circle-outlined v-if="detailLogMessage.status" />
+                  <close-circle-outlined v-else />
+                </template>
                 {{ detailLogMessage.status ? '成功' : '失败' }}
               </a-tag>
             </div>
-            
-            <a-descriptions :column="1" :bordered="false">
-              <a-descriptions-item label="任务编号">
-                {{ detailLogMessage.job_id || '未知' }}
-              </a-descriptions-item>
-              <a-descriptions-item label="执行信息">
-                {{ detailLogMessage.message || '无信息' }}
-              </a-descriptions-item>
-              <a-descriptions-item label="开始时间">
-                {{ formatFullDateTime(detailLogMessage.timestamp) }}
-              </a-descriptions-item>
-              <a-descriptions-item label="执行耗时">
-                {{ formatDuration(detailLogMessage.duration) }}
-              </a-descriptions-item>
-            </a-descriptions>
-            
-            <div class="output-section">
-              <div class="output-header">任务输出</div>
-              <a-input
-                v-model="detailLogMessage.output"
-                type="textarea"
-                :autoSize="{ minRows: 4, maxRows: 10 }"
-                placeholder="无输出内容"
-                readonly
-              />
-            </div>
-          </div>
+          </template>
           
-          <!-- 无日志时的占位 -->
-          <div v-else class="no-log-selected">
-            <a-empty description="请选择一条日志记录查看详情" />
+          <a-descriptions :column="1" bordered>
+            <a-descriptions-item label="任务编号">
+              <code>{{ detailLogMessage.job_id || '未知' }}</code>
+            </a-descriptions-item>
+            <a-descriptions-item label="执行信息">
+              {{ detailLogMessage.message || '无信息' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="开始时间">
+              <calendar-outlined style="margin-right: 6px" />
+              {{ formatFullDateTime(detailLogMessage.timestamp) }}
+            </a-descriptions-item>
+            <a-descriptions-item label="执行耗时">
+              <hourglass-outlined style="margin-right: 6px" />
+              {{ formatDuration(detailLogMessage.duration) }}
+            </a-descriptions-item>
+          </a-descriptions>
+          
+          <div class="output-section">
+            <div class="output-header">
+              <code-outlined />
+              任务输出
+            </div>
+            <a-textarea
+              v-model:value="detailLogMessage.output"
+              :auto-size="{ minRows: 5, maxRows: 15 }"
+              placeholder="无输出内容"
+              readonly
+              class="output-content"
+            />
           </div>
-        </div>
+        </a-card>
         
-        <div class="log-detail-section" v-else>
-          <a-empty description="加载中，请稍候..." />
-        </div>
+        <!-- 无日志时的占位 -->
+        <a-card v-else class="log-detail-card" :bordered="true">
+          <template #title>
+            <div class="card-header">
+              <file-text-outlined />
+              <span>执行详情</span>
+            </div>
+          </template>
+          
+          <div class="no-log-selected">
+            <a-empty description="请选择一条日志记录查看详情">
+              <template #image>
+                <file-search-outlined style="font-size: 48px; color: #aaaaaa;" />
+              </template>
+            </a-empty>
+          </div>
+        </a-card>
       </div>
-    </a-card>
+      
+      <div class="log-detail-section" v-else>
+        <a-card :bordered="true" class="loading-card">
+          <a-empty description="加载中，请稍候...">
+            <template #image>
+              <a-spin size="large" />
+            </template>
+          </a-empty>
+        </a-card>
+      </div>
+    </div>
     
     <!-- 任务表单抽屉 -->
     <JobFormDrawer 
@@ -227,6 +313,31 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
 import _ from 'lodash'
+import zhCn from 'ant-design-vue/es/locale/zh_CN'
+import { 
+  CalendarOutlined,
+  ClockCircleOutlined, 
+  PauseOutlined,
+  PlayCircleOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  ThunderboltOutlined,
+  InfoCircleOutlined,
+  FilterOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  FileTextOutlined,
+  CodeOutlined,
+  HourglassOutlined,
+  SyncOutlined,
+  NumberOutlined,
+  HistoryOutlined,
+  ArrowLeftOutlined,
+  FileSearchOutlined
+} from '@ant-design/icons-vue'
 
 // 导入组件和API，重命名冲突的函数
 import JobFormDrawer from './components/JobFormDrawer.vue'
@@ -259,7 +370,7 @@ const missionLogTotal = ref(0)
 const detailLogMessage = ref<LogItem | Record<string, any>>({})
 const selectedLogIndex = ref(0)
 const searchSelect = ref()
-const searchDate = ref([])
+const searchDate = ref<[dayjs.Dayjs, dayjs.Dayjs] | null>(null)
 const startTime = ref()
 const endTime = ref()
 const statusOptions = [
@@ -276,6 +387,9 @@ const drawer = ref(false)
 const drawerTitle = ref('')
 const formData = ref({})
 const funcOptions = ref([])
+
+// 添加loading状态
+const loading = ref(false)
 
 // 方法
 const loadJobDetail = async () => {
@@ -315,11 +429,11 @@ const getMissionLogTableData = async (page = 1, pageSize = 10) => {
       return
     }
     
-    const response = await getLog(page, pageSize, detailJobsLog.value)
+    loading.value = true
+    const response = await getLog(page, pageSize, detailJobsLog.value, searchSelect.value, startTime.value, endTime.value)
     
     // 适配API返回结构
     if (response && response.code === 200 && response.data) {
-      console.log('日志数据:', response); // 调试日志
       
       // 处理嵌套结构 response.data.logs
       const logData = response.data;
@@ -332,7 +446,6 @@ const getMissionLogTableData = async (page = 1, pageSize = 10) => {
         detailLogMessage.value = missionLogTableData.value[0];
         selectedLogIndex.value = 0;
       } else {
-        console.log('没有日志数据');
         detailLogMessage.value = {} as LogItem;
       }
     } else {
@@ -342,8 +455,11 @@ const getMissionLogTableData = async (page = 1, pageSize = 10) => {
     }
   } catch (error) {
     console.error('获取日志失败', error);
+    message.error('获取日志数据失败')
     missionLogTableData.value = [];
     missionLogTotal.value = 0;
+  } finally {
+    loading.value = false
   }
 }
 
@@ -366,10 +482,13 @@ const searchSelectValue = (value: any) => {
   searchSelect.value = value
 }
 
-const searchDateValue = (value: any) => {
-  if(value && value.length > 0) {
-    startTime.value = value[0]
-    endTime.value = value[1]
+const searchDateValue = (value: [dayjs.Dayjs, dayjs.Dayjs] | null) => {
+  if (value && value.length === 2) {
+    startTime.value = value[0].format('YYYY-MM-DDTHH:mm:ss')
+    endTime.value = value[1].format('YYYY-MM-DDTHH:mm:ss')
+  } else {
+    startTime.value = undefined
+    endTime.value = undefined
   }
 }
 
@@ -383,7 +502,6 @@ const searchLog = async () => {
   
   // 适配API返回结构
   if (response && response.code === 200 && response.data) {
-    console.log('搜索日志数据:', response); // 调试日志
     
     // 处理嵌套结构 response.data.logs
     const logData = response.data;
@@ -407,7 +525,7 @@ const searchLog = async () => {
 
 const resetSearch = () => {
   searchSelect.value = undefined
-  searchDate.value = []
+  searchDate.value = null
   startTime.value = undefined
   endTime.value = undefined
   getMissionLogTableData(missionLogCurrentPage.value, missionLogPageSize.value)
@@ -454,8 +572,13 @@ const editJob = async (row: Job) => {
       param: data.kwargs
     }
   } else if(data.func === 'run_os_command' || data.func === 'run_python_command') {
+    // 确保命令是字符串类型
+    const commandStr = typeof data.kwargs === 'object' ? 
+      (data.kwargs.command || JSON.stringify(data.kwargs)) : 
+      String(data.kwargs);
+      
     data.kwargs = {
-      "command": data.kwargs
+      command: commandStr
     }
   }
   
@@ -638,6 +761,59 @@ const truncateMessage = (message: string | undefined | null) => {
   return message.length > 30 ? message.substring(0, 30) + '...' : message
 }
 
+// 添加处理分页变化的方法
+const handlePaginationChange = (page: number, pageSize: number) => {
+  missionLogCurrentPage.value = page
+  missionLogPageSize.value = pageSize
+  getMissionLogTableData(page, pageSize)
+}
+
+// 添加getTriggerColor方法
+const getTriggerColor = (trigger: string) => {
+  if (trigger.includes('周期性任务')) {
+    return 'purple'
+  } else if (trigger.includes('特定时间周期')) {
+    return 'geekblue'
+  } else if (trigger.includes('特定日期')) {
+    return 'cyan'
+  }
+  return 'default'
+}
+
+// 添加getTimeTagColor方法
+const getTimeTagColor = (timeStr: string | null | undefined) => {
+  if (!timeStr) return 'default'
+  
+  const now = dayjs()
+  const targetTime = dayjs(timeStr)
+  
+  // 如果已过期
+  if (targetTime.isBefore(now)) {
+    return 'red'
+  }
+  
+  // 如果在24小时内
+  if (targetTime.diff(now, 'hour') < 24) {
+    return 'orange'
+  }
+  
+  // 如果在7天内
+  if (targetTime.diff(now, 'day') < 7) {
+    return 'green'
+  }
+  
+  // 更远的未来
+  return 'blue'
+}
+
+// 添加formatTooltipContent方法
+const formatTooltipContent = (content: string | object) => {
+  if (typeof content === 'object') {
+    return JSON.stringify(content, null, 2)
+  }
+  return content.toString()
+}
+
 onMounted(() => {
   loadJobDetail()
 })
@@ -645,51 +821,77 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .job-detail-container {
-  .detail-log-header {
+  .detail-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    // margin-bottom: 20px;
+    // padding: 16px 0;
+    border-bottom: 1px solid #ebeef5;
     
     .header-left {
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: flex-start;
       
       .back-button {
-        margin-right: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
       }
       
-      .header-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: #303133;
+      .title-section {
+        .header-title {
+          font-size: 20px;
+          font-weight: 600;
+          color: #303133;
+        }
       }
     }
   }
-  
+
   .detail-log-container {
-    .task-info-card {
+    .task-info-card, .log-filter-card, .log-list-card, .log-detail-card {
       margin-bottom: 20px;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      background-color: #fff;
       
       .card-header {
         font-weight: 600;
         color: #303133;
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
     }
     
-    .log-filter-section {
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 20px;
+    .loading-placeholder {
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
       
-      .filter-title {
-        font-weight: 600;
-        margin-bottom: 15px;
-        color: #303133;
+      .loading-text {
+        margin-top: 16px;
+        color: #909399;
       }
-      
+    }
+    
+    .kwargs-content {
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    
+    .log-filter-card {
       .filter-content {
         display: flex;
+        align-items: center;
         flex-wrap: wrap;
         gap: 10px;
       }
@@ -700,22 +902,14 @@ onMounted(() => {
       grid-template-columns: 360px 1fr;
       gap: 20px;
       
-      .log-list {
-        background-color: #fff;
-        border: 1px solid #e4e7ed;
-        border-radius: 8px;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
+      .log-list-card {
+        margin-bottom: 0;
+        height: fit-content;
         
-        .log-list-header {
-          padding: 12px 15px;
-          font-weight: 600;
-          border-bottom: 1px solid #e4e7ed;
-          background-color: #f5f7fa;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        .log-scroll-container {
+          height: 400px;
+          overflow-y: auto;
+          overflow-x: hidden;
         }
         
         .log-item {
@@ -723,7 +917,7 @@ onMounted(() => {
           border-bottom: 1px solid #ebeef5;
           cursor: pointer;
           display: flex;
-          align-items: flex-start;
+          flex-direction: column;
           transition: all 0.3s;
           
           &:hover {
@@ -731,98 +925,174 @@ onMounted(() => {
           }
           
           &.active {
-            background-color: #ecf5ff;
+            background-color: #e6f7ff;
+            border-right: 3px solid #1890ff;
           }
           
-          .log-item-left {
-            margin-right: 10px;
-            padding-top: 2px;
-          }
-          
-          .log-item-center {
-            flex: 1;
+          .log-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            
+            .log-item-status {
+              flex-shrink: 0;
+            }
             
             .log-time {
-              font-size: 13px;
+              font-size: 12px;
               color: #606266;
-              margin-bottom: 4px;
+              display: flex;
+              align-items: center;
+              gap: 4px;
             }
+          }
+          
+          .log-item-content {
+            display: flex;
+            flex-direction: column;
             
             .log-message {
               font-size: 14px;
               color: #303133;
               word-break: break-word;
+              margin-bottom: 6px;
             }
-          }
-          
-          .log-item-right {
-            margin-left: 10px;
             
             .log-duration {
               font-size: 12px;
               color: #909399;
-              white-space: nowrap;
+              display: flex;
+              align-items: center;
+              gap: 4px;
             }
           }
         }
-        
-        .log-pagination {
-          padding: 10px;
-          border-top: 1px solid #e4e7ed;
-          background-color: #f5f7fa;
-        }
       }
       
-      .log-detail {
-        background-color: #fff;
-        border: 1px solid #e4e7ed;
-        border-radius: 8px;
-        padding: 0;
-        
-        .log-detail-header {
-          padding: 12px 15px;
-          font-weight: 600;
-          border-bottom: 1px solid #e4e7ed;
-          background-color: #f5f7fa;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
+      .log-detail-card {
+        margin-bottom: 0;
         
         .output-section {
           padding: 15px;
+          border-top: 1px solid #ebeef5;
+          margin-top: 16px;
           
           .output-header {
             font-weight: 600;
             margin-bottom: 10px;
             color: #303133;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+          
+          .output-content {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            background-color: #f5f7fa;
+            border-radius: 4px;
           }
         }
       }
       
       .no-log-selected {
-        background-color: #fff;
-        border: 1px solid #e4e7ed;
-        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 40px;
+        padding: 40px 0;
+        height: 100%;
+      }
+      
+      .loading-card {
+        grid-column: 1 / span 2;
       }
     }
   }
   
   .next-run-time {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+    
+    .time-tag {
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+      
+      span {
+        white-space: nowrap;
+      }
+    }
     
     .time-relative {
       font-size: 12px;
       color: #909399;
-      padding-left: 4px;
-      margin-top: 4px;
+      padding-left: 8px;
     }
+  }
+  
+  .status-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    line-height: 24px;
+  }
+  
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    
+    .action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 64px;
+      
+      &.edit-btn {
+        background-color: #1890ff;
+        border-color: #1890ff;
+      }
+      
+      &.run-btn {
+        background-color: #13c2c2;
+        border-color: #13c2c2;
+      }
+      
+      &.status-btn {
+        &.ant-btn-warning {
+          background-color: #faad14;
+          border-color: #faad14;
+          color: #fff;
+        }
+      }
+    }
+  }
+  
+  :deep(.ant-descriptions-bordered) {
+    .ant-descriptions-item-label {
+      background-color: #f5f7fa;
+      width: 120px;
+    }
+  }
+
+  .pagination-container {
+    padding: 12px 16px;
+    border-top: 1px solid #ebeef5;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .func-text {
+    font-weight: 500;
+    color: #722ed1; // 保持与原来tag的紫色一致
+  }
+  
+  .id-text {
+    font-family: monospace;
+    color: #1890ff;
+    font-weight: 500;
   }
 }
 </style> 

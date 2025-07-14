@@ -1,7 +1,7 @@
 <template>
   <a-drawer 
-    :visible="modelValue" 
-    @update:visible="$emit('update:modelValue', $event)" 
+    :open="modelValue" 
+    @update:open="$emit('update:modelValue', $event)" 
     :title="title" 
     :width="800"
     @close="close" 
@@ -115,7 +115,68 @@
           <div v-if="whatsTrigger === 'cron'" class="time-inputs">
             <div class="time-inputs-header">设置定时规则：</div>
             <yhInput :data="runTimeCron" :formData="formDataCopy" />
-            <div class="form-helper-text">设置具体的执行时间点，如每月1日的10:30执行</div>
+            <div class="form-helper-text">
+              设置具体的执行时间点，如每月1日的10:00执行。
+              <strong>必须设置小时值，分钟默认为0</strong>，其他时间参数可选。
+              <br>
+              <a-collapse ghost size="small">
+                <a-collapse-panel key="1" header="查看字段说明">
+                  <div class="cron-fields-table">
+                    <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                      <thead>
+                        <tr>
+                          <th style="text-align:left; padding:4px; border-bottom:1px solid #eee;">字段</th>
+                          <th style="text-align:left; padding:4px; border-bottom:1px solid #eee;">范围</th>
+                          <th style="text-align:left; padding:4px; border-bottom:1px solid #eee;">说明</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">year</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">1970–2099</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">可选</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">month</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">1–12</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">可选</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">day</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">1–31</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">可选</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">week</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">1–53</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">可选</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">day_of_week</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">0–6</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">0为周一，可选</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">hour</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">0–23</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;"><strong>必填</strong></td>
+                        </tr>
+                        <tr>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">minute</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">0–59</td>
+                          <td style="padding:4px; border-bottom:1px solid #f5f5f5;">默认为0</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:4px;">second</td>
+                          <td style="padding:4px;">0–59</td>
+                          <td style="padding:4px;">默认为0</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </a-collapse-panel>
+              </a-collapse>
+            </div>
           </div>
           
           <div v-if="whatsTrigger === 'date'" class="time-inputs">
@@ -159,7 +220,7 @@
         <template v-if="whatsFunc === 'run_os_command' || whatsFunc === 'run_python_command'">
           <a-form-item label="命令" name="['kwargs', 'command']">
             <a-textarea 
-              v-model:value="formDataCopy.kwargs.command" 
+              v-model:value="stringifiedCommand" 
               placeholder="请输入要执行的命令"
               :auto-size="{ minRows: 2, maxRows: 5 }"
             />
@@ -187,11 +248,15 @@
           </a-form-item>
           
           <a-form-item label="参数2" name="['kwargs', 'arg2']">
-            <a-input 
+            <a-input-number
               v-model:value="formDataCopy.kwargs.arg2" 
               placeholder="请输入参数2的值" 
-              addon-before="arg2"
-            />
+              :min="0"
+              :precision="0"
+              style="width: 100%"
+            >
+              <template #addonBefore>arg2</template>
+            </a-input-number>
             <div class="form-helper-text">参数2必须是整数类型</div>
           </a-form-item>
         </template>
@@ -218,20 +283,20 @@ import _ from 'lodash'
 import yhInput from '../../../components/yh-input.vue'
 
 // 定义类型
-interface FuncOption {
-  label: string;
-  value: string;
-  description: string;
-  parameters: Record<string, any>;
-}
-
 interface FormData {
-  id?: string;
   func: string;
   trigger: string;
   kwargs: Record<string, any>;
   job_id: string;
   trigger_args: Record<string, any>;
+  [key: string]: any;
+}
+
+interface FuncOption {
+  label: string;
+  value: string;
+  description?: string;
+  parameters?: any[];
 }
 
 // 定义props
@@ -259,10 +324,23 @@ const whatsFunc = ref('')
 const whatsTrigger = ref('')
 const submitLoading = ref(false)
 
+// 处理command字段，确保它是字符串类型
+const stringifiedCommand = computed({
+  get: () => {
+    if (!formDataCopy.value.kwargs) return '';
+    const command = formDataCopy.value.kwargs.command;
+    return typeof command === 'object' ? JSON.stringify(command) : String(command || '');
+  },
+  set: (val) => {
+    if (!formDataCopy.value.kwargs) formDataCopy.value.kwargs = {};
+    formDataCopy.value.kwargs.command = val;
+  }
+});
+
 // 监听formData变化
 watch(() => props.formData, (newVal) => {
   // 深拷贝防止引用错误
-  formDataCopy.value = _.cloneDeep(newVal)
+  formDataCopy.value = _.cloneDeep(newVal as FormData)
   
   // 确保kwargs和trigger_args存在
   if (!formDataCopy.value.kwargs) formDataCopy.value.kwargs = {}
@@ -291,7 +369,7 @@ const rules = {
 const runTimeInterval = [
   {
     name: 'days',
-    type: 'input',
+    type: 'number',
     label: '天数',
     description: '几天执行一次',
     placeholder: '请输入天数',
@@ -299,7 +377,7 @@ const runTimeInterval = [
   },
   {
     name: 'hours',
-    type: 'input',
+    type: 'number',
     label: '小时',
     description: '几小时执行一次',
     placeholder: '请输入小时数',
@@ -307,7 +385,7 @@ const runTimeInterval = [
   },
   {
     name: 'minutes',
-    type: 'input',
+    type: 'number',
     label: '分钟',
     description: '几分钟执行一次',
     placeholder: '请输入分钟数',
@@ -315,7 +393,7 @@ const runTimeInterval = [
   },
   {
     name: 'seconds',
-    type: 'input',
+    type: 'number',
     label: '秒数',
     description: '几秒执行一次',
     placeholder: '请输入秒数',
@@ -327,15 +405,15 @@ const runTimeInterval = [
 const runTimeCron = [
   {
     name: 'year',
-    type: 'input',
+    type: 'number',
     label: '年',
-    description: '指定年份',
+    description: '指定年份 (1970-2099)',
     placeholder: '请输入年份，如: 2023',
     triggerArgs: true
   },
   {
     name: 'month',
-    type: 'input',
+    type: 'number',
     label: '月',
     description: '指定月份 (1-12)',
     placeholder: '请输入月份，如: 3',
@@ -343,7 +421,7 @@ const runTimeCron = [
   },
   {
     name: 'day',
-    type: 'input',
+    type: 'number',
     label: '日',
     description: '指定日期 (1-31)',
     placeholder: '请输入日期，如: 15',
@@ -351,15 +429,23 @@ const runTimeCron = [
   },
   {
     name: 'week',
-    type: 'input',
+    type: 'number',
+    label: '周',
+    description: '指定周数 (1-53)',
+    placeholder: '请输入周数，如: 10',
+    triggerArgs: true
+  },
+  {
+    name: 'day_of_week',
+    type: 'number',
     label: '星期',
-    description: '指定星期几 (1-7，其中1是星期一)',
+    description: '指定星期几 (0-6，其中0是周一)',
     placeholder: '请输入星期几，如: 1',
     triggerArgs: true
   },
   {
     name: 'hour',
-    type: 'input',
+    type: 'number',
     label: '时',
     description: '指定小时 (0-23)',
     placeholder: '请输入小时，如: 10',
@@ -367,15 +453,15 @@ const runTimeCron = [
   },
   {
     name: 'minute',
-    type: 'input',
+    type: 'number',
     label: '分',
-    description: '指定分钟 (0-59)',
-    placeholder: '请输入分钟，如: 30',
+    description: '指定分钟 (0-59)，默认为0',
+    placeholder: '默认为0，可不填',
     triggerArgs: true
   },
   {
     name: 'second',
-    type: 'input',
+    type: 'number',
     label: '秒',
     description: '指定秒数 (0-59)',
     placeholder: '请输入秒数，如: 0',
@@ -394,7 +480,7 @@ const changeFunc = (value: string) => {
   } else if (value === 'run_os_command' || value === 'run_python_command') {
     formDataCopy.value.kwargs = { command: '' }
   } else if (value === 'example_task') {
-    formDataCopy.value.kwargs = { arg1: '', arg2: '' }
+    formDataCopy.value.kwargs = { arg1: '', arg2: 0 }
   } else {
     formDataCopy.value.kwargs = {}
   }
@@ -408,11 +494,11 @@ const changeTrigger = (e: any) => {
   
   // 根据触发器类型初始化参数
   if (value === 'interval') {
-    formDataCopy.value.trigger_args = { days: '', hours: '', minutes: '', seconds: '' }
+    formDataCopy.value.trigger_args = { days: 0, hours: 0, minutes: 0, seconds: 0 }
   } else if (value === 'cron') {
     formDataCopy.value.trigger_args = { 
-      year: '', month: '', day: '', week: '', 
-      hour: '', minute: '', second: '' 
+      year: 0, month: 0, day: 0, week: 0, day_of_week: 0,
+      hour: 0, minute: 0, second: 0 
     }
   } else if (value === 'date') {
     formDataCopy.value.trigger_args = { run_date: '' }
@@ -450,16 +536,36 @@ const submitForm = async () => {
     
     // 检查触发器参数
     if (formDataCopy.value.trigger === 'interval') {
-      const { days, hours, minutes, seconds } = formDataCopy.value.trigger_args
-      if (!days && !hours && !minutes && !seconds) {
+      const triggerArgs = formDataCopy.value.trigger_args
+      
+      // 检查是否至少设置了一个时间间隔值
+      if (!triggerArgs.days && !triggerArgs.hours && !triggerArgs.minutes && !triggerArgs.seconds) {
         valid = false
         errorMsg = '请至少设置一个时间间隔值'
       }
     } else if (formDataCopy.value.trigger === 'cron') {
-      // 至少需要设置minute和hour
-      if (!formDataCopy.value.trigger_args.hour || !formDataCopy.value.trigger_args.minute) {
+      const triggerArgs = formDataCopy.value.trigger_args
+      
+      // 修改判断逻辑：只检查hour是否设置，分钟默认为0不需要手动设置
+      if (triggerArgs.hour === undefined || triggerArgs.hour === null || triggerArgs.hour === '') {
         valid = false
-        errorMsg = '请至少设置小时和分钟'
+        errorMsg = '请至少设置小时值'
+      } else {
+        // 确保minute至少为0（默认值）
+        if (triggerArgs.minute === undefined || triggerArgs.minute === null || triggerArgs.minute === '') {
+          triggerArgs.minute = 0
+        }
+        
+        // 确保second至少为0（默认值）
+        if (triggerArgs.second === undefined || triggerArgs.second === null || triggerArgs.second === '') {
+          triggerArgs.second = 0
+        }
+        
+        // 确保day_of_week在正确范围内
+        if (triggerArgs.day_of_week !== undefined && triggerArgs.day_of_week !== null && 
+            (triggerArgs.day_of_week < 0 || triggerArgs.day_of_week > 6)) {
+          triggerArgs.day_of_week = 0  // 默认周一
+        }
       }
     } else if (formDataCopy.value.trigger === 'date') {
       if (!formDataCopy.value.trigger_args.run_date) {
@@ -480,9 +586,14 @@ const submitForm = async () => {
         errorMsg = '请输入要执行的命令'
       }
     } else if (formDataCopy.value.func === 'example_task') {
-      if (!formDataCopy.value.kwargs.arg1 || !formDataCopy.value.kwargs.arg2) {
+      if (!formDataCopy.value.kwargs.arg1 || formDataCopy.value.kwargs.arg2 === undefined) {
         valid = false
         errorMsg = '请输入arg1和arg2参数的值'
+      }
+      
+      // 确保arg2是整数类型
+      if (typeof formDataCopy.value.kwargs.arg2 === 'string') {
+        formDataCopy.value.kwargs.arg2 = parseInt(formDataCopy.value.kwargs.arg2) || 0
       }
     }
     

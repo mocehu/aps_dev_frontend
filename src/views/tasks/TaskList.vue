@@ -98,22 +98,21 @@
             <!-- 参数部分 -->
             <div class="task-parameters" v-if="hasParameters(item)">
               <div class="section-title">参数：</div>
-              <a-descriptions :column="1" :bordered="false">
-                <template v-for="(param, key) in item.parameters" :key="key">
-                  <a-descriptions-item :label="key">
-                    <a-tag type="info">{{ param.type || '未知类型' }}</a-tag>
-                    <div class="param-details">
-                      <span v-if="param.description" class="param-description">{{ param.description }}</span>
-                      <span v-if="param.default !== undefined && param.default !== '无'" class="param-default">
-                        默认值: <code>{{ param.default }}</code>
-                      </span>
-                      <span v-if="param.required" class="param-required">
-                        <a-tag size="small" type="danger">必填</a-tag>
-                      </span>
+              <div class="param-list">
+                <div v-for="(param, key) in item.parameters" :key="key" class="param-item">
+                  <div class="param-header">
+                    <span class="param-name">{{ key }}</span>
+                    <a-tag size="small" type="info" class="param-type">{{ param.type || '未知类型' }}</a-tag>
+                    <a-tag size="small" type="danger" class="required-tag" v-if="param.required">必填</a-tag>
+                  </div>
+                  <div class="param-body">
+                    <div v-if="param.description" class="param-description">{{ param.description }}</div>
+                    <div v-if="param.default !== undefined && param.default !== '无'" class="param-default">
+                      默认值: <code>{{ param.default }}</code>
                     </div>
-                  </a-descriptions-item>
-                </template>
-              </a-descriptions>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </a-card>
@@ -164,7 +163,6 @@ const filteredFuncRes = ref<TaskFuncOption[]>([])
 const taskSearchKeyword = ref('')
 const taskCategories = ref<string[]>([]) // 存储任务分类
 const selectedCategory = ref<string>('') // 当前选择的分类
-const descriptionTooltips = ref<Record<string, boolean>>({})
 const drawer = ref(false)
 const drawerTitle = ref('')
 const formData = ref<Record<string, any>>({})
@@ -606,32 +604,67 @@ onMounted(() => {
         .task-parameters {
           margin-bottom: 16px;
           
-          .param-details {
+          .param-list {
             display: flex;
             flex-direction: column;
-            margin-top: 4px;
-            color: #606266;
-            font-size: 13px;
+            gap: 12px;
             
-            .param-description {
-              margin-bottom: 4px;
-              line-height: 1.5;
-            }
-            
-            .param-default {
-              margin-bottom: 4px;
-              
-              code {
-                background-color: #f5f7fa;
-                padding: 2px 4px;
-                border-radius: 3px;
-                font-family: monospace;
-                color: #e6a23c;
+            .param-item {
+              .param-header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 4px;
+                
+                .param-name {
+                  font-weight: 500;
+                  color: #303133;
+                }
+                
+                .param-type {
+                  font-size: 12px;
+                  line-height: 1;
+                  padding: 2px 6px;
+                  height: auto;
+                  margin: 0;
+                }
+                
+                .required-tag {
+                  font-size: 12px;
+                  line-height: 1;
+                  padding: 2px 6px;
+                  height: auto;
+                  margin: 0;
+                }
+                
+                :deep(.ant-tag) {
+                  margin-right: 0;
+                }
               }
-            }
-            
-            .param-required {
-              margin-top: 4px;
+              
+              .param-body {
+                padding-left: 8px;
+                border-left: 2px solid #e8e8e8;
+                color: #606266;
+                font-size: 13px;
+                
+                .param-description {
+                  margin-bottom: 4px;
+                  line-height: 1.5;
+                }
+                
+                .param-default {
+                  color: #909399;
+                  
+                  code {
+                    background-color: #f5f7fa;
+                    padding: 2px 4px;
+                    border-radius: 3px;
+                    font-family: monospace;
+                    color: #e6a23c;
+                  }
+                }
+              }
             }
           }
         }
