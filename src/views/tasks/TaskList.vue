@@ -54,6 +54,7 @@
           class="task-box"
           :bordered="false"
           :hoverable="true"
+          @click="showTaskDetail(item)"
         >
           <template #title>
             <div class="task-header">
@@ -68,51 +69,31 @@
                   {{ item.category }}
                 </a-tag>
               </div>
-              <a-button type="primary" plain size="large" @click="quickCreateTask(item)">创建任务</a-button>
+              <a-button type="primary" plain @click.stop="quickCreateTask(item)">创建任务</a-button>
             </div>
           </template>
           
           <div class="task-content">
-            <!-- 函数描述 -->
             <div class="task-description-section">
               <div class="section-title">功能描述：</div>
-              <div class="task-description">
-                {{ item.parsed_description || item.description }}
+              <div class="task-description preview-description">
+                {{ truncateDescription(item.parsed_description || item.description) }}
               </div>
             </div>
             
-            <!-- 返回值描述 -->
             <div class="task-return" v-if="item.return_value">
               <div class="section-title">返回值：</div>
               <div class="return-description">
                 <a-tag type="success" effect="light">{{ item.return_value.type }}</a-tag>
                 <div class="return-details">
-                  <div class="return-text">{{ item.return_value.description }}</div>
-                  <div v-if="item.return_value.example" class="return-example">
-                    示例: <code>{{ item.return_value.example }}</code>
-                  </div>
+                  <div class="return-text preview-return">{{ truncateDescription(item.return_value.description) }}</div>
                 </div>
               </div>
             </div>
             
-            <!-- 参数部分 -->
             <div class="task-parameters" v-if="hasParameters(item)">
               <div class="section-title">参数：</div>
-              <div class="param-list">
-                <div v-for="(param, key) in item.parameters" :key="key" class="param-item">
-                  <div class="param-header">
-                    <span class="param-name">{{ key }}</span>
-                    <a-tag size="small" type="info" class="param-type">{{ param.type || '未知类型' }}</a-tag>
-                    <a-tag size="small" type="danger" class="required-tag" v-if="param.required">必填</a-tag>
-                  </div>
-                  <div class="param-body">
-                    <div v-if="param.description" class="param-description">{{ param.description }}</div>
-                    <div v-if="param.default !== undefined && param.default !== '无'" class="param-default">
-                      默认值: <code>{{ param.default }}</code>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <div class="param-count">{{ Object.keys(item.parameters).length }} 个参数</div>
             </div>
           </div>
         </a-card>
@@ -129,6 +110,83 @@
       @submit="submitForm"
       @close="closeDrawer"
     />
+    
+    <!-- 任务详情弹窗 -->
+    <a-modal
+      v-model:open="detailModalVisible"
+      :title="selectedTask?.name"
+      width="700px"
+      :footer="null"
+    >
+      <template v-if="selectedTask">
+        <a-descriptions :column="1" bordered size="small">
+          <a-descriptions-item label="分类">
+            <a-tag :type="getTagTypeByCategory(selectedTask.category)">{{ selectedTask.category }}</a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="功能描述">
+            <a-typography-paragraph style="margin-bottom: 0">
+              {{ selectedTask.parsed_description || selectedTask.description }}
+            </a-typography-paragraph>
+          </a-descriptions-item>
+        </a-descriptions>
+        
+        <template v-if="selectedTask.return_value">
+          <a-divider orientation="left">返回值</a-divider>
+          <a-space direction="vertical" style="width: 100%">
+            <a-tag color="green">{{ selectedTask.return_value.type }}</a-tag>
+            <a-typography-paragraph style="margin-bottom: 0">
+              {{ selectedTask.return_value.description }}
+            </a-typography-paragraph>
+            <a-typography-paragraph v-if="selectedTask.return_value.example" style="margin-bottom: 0">
+              <a-typography-text type="secondary">示例：</a-typography-text>
+              <a-typography-text code>{{ selectedTask.return_value.example }}</a-typography-text>
+            </a-typography-paragraph>
+          </a-space>
+        </template>
+        
+        <template v-if="hasParameters(selectedTask)">
+          <a-divider orientation="left">参数列表</a-divider>
+          <a-table 
+            :data-source="getParameterDataSource(selectedTask)" 
+            :columns="paramColumns"
+            :pagination="false"
+            size="small"
+            bordered
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'name'">
+                <a-typography-text strong>{{ record.name }}</a-typography-text>
+              </template>
+              <template v-else-if="column.key === 'type'">
+                <a-tag color="blue">{{ record.type }}</a-tag>
+              </template>
+              <template v-else-if="column.key === 'required'">
+                <a-tag v-if="record.required" color="error">必填</a-tag>
+                <a-typography-text v-else type="secondary">可选</a-typography-text>
+              </template>
+              <template v-else-if="column.key === 'description'">
+                <a-typography-text v-if="record.description && record.description !== '-'">
+                  {{ record.description }}
+                </a-typography-text>
+                <a-typography-text v-else type="secondary">无描述</a-typography-text>
+              </template>
+              <template v-else-if="column.key === 'default'">
+                <a-typography-text v-if="record.default && record.default !== '无'" code>
+                  {{ record.default }}
+                </a-typography-text>
+                <a-typography-text v-else type="secondary">-</a-typography-text>
+              </template>
+            </template>
+          </a-table>
+        </template>
+        
+        <a-divider />
+        <a-flex justify="flex-end" gap="small">
+          <a-button type="primary" @click="quickCreateTaskFromModal">创建任务</a-button>
+          <a-button @click="detailModalVisible = false">关闭</a-button>
+        </a-flex>
+      </template>
+    </a-modal>
   </div>
 </template>
 
@@ -161,12 +219,14 @@ const router = useRouter()
 const funcRes = ref<TaskFuncOption[]>([])
 const filteredFuncRes = ref<TaskFuncOption[]>([])
 const taskSearchKeyword = ref('')
-const taskCategories = ref<string[]>([]) // 存储任务分类
-const selectedCategory = ref<string>('') // 当前选择的分类
+const taskCategories = ref<string[]>([])
+const selectedCategory = ref<string>('')
 const drawer = ref(false)
 const drawerTitle = ref('')
 const formData = ref<Record<string, any>>({})
 const funcOptions = ref<TaskFuncOption[]>([])
+const detailModalVisible = ref(false)
+const selectedTask = ref<TaskFuncOption | null>(null)
 
 // 初始化表单数据
 const initFormData = ref({
@@ -174,12 +234,55 @@ const initFormData = ref({
   trigger: '',
   kwargs: {},
   job_id: '',
+  name: '',
   trigger_args: {}
 })
 
 // 检查是否有参数
 const hasParameters = (item: TaskFuncOption) => {
   return item.parameters && Object.keys(item.parameters).length > 0;
+}
+
+// 截断描述
+const truncateDescription = (text: string | undefined) => {
+  if (!text) return ''
+  return text.length > 80 ? text.substring(0, 80) + '...' : text
+}
+
+// 显示任务详情弹窗
+const showTaskDetail = (item: TaskFuncOption) => {
+  selectedTask.value = item
+  detailModalVisible.value = true
+}
+
+// 参数表格列配置
+const paramColumns = [
+  { title: '参数名', key: 'name', dataIndex: 'name', width: 100 },
+  { title: '类型', key: 'type', dataIndex: 'type', width: 80, align: 'center' },
+  { title: '必填', key: 'required', dataIndex: 'required', width: 60, align: 'center' },
+  { title: '描述', key: 'description', dataIndex: 'description' },
+  { title: '默认值', key: 'default', dataIndex: 'default', width: 100 }
+]
+
+// 获取参数表格数据
+const getParameterDataSource = (item: TaskFuncOption) => {
+  if (!item.parameters) return []
+  return Object.entries(item.parameters).map(([key, param]: [string, any]) => ({
+    key,
+    name: key,
+    type: param.type || '未知',
+    required: param.required || false,
+    description: param.description || '-',
+    default: param.default
+  }))
+}
+
+// 从弹窗创建任务
+const quickCreateTaskFromModal = () => {
+  if (selectedTask.value) {
+    quickCreateTask(selectedTask.value)
+    detailModalVisible.value = false
+  }
 }
 
 // 方法
@@ -383,17 +486,8 @@ const quickCreateTask = (item: TaskFuncOption) => {
     return_value: item.return_value
   }))
   
-  // 生成随机ID
-  generateRandomId()
-  
   // 显示抽屉
   drawer.value = true
-}
-
-const generateRandomId = () => {
-  const prefix = 'task_'
-  const randomStr = Math.random().toString(36).substring(2, 10)
-  formData.value.job_id = prefix + randomStr
 }
 
 const submitForm = async (data: any) => {
@@ -521,10 +615,14 @@ onMounted(() => {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 12px;
         
         .title-with-category {
           display: flex;
           align-items: center;
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
           
           .task-title {
             font-size: 18px;
@@ -532,10 +630,16 @@ onMounted(() => {
             margin: 0;
             margin-right: 8px;
             color: #303133;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-shrink: 1;
+            min-width: 0;
           }
           
           .category-label {
             font-size: 12px;
+            flex-shrink: 0;
           }
         }
       }
@@ -667,6 +771,17 @@ onMounted(() => {
               }
             }
           }
+          
+          .param-count {
+            color: #909399;
+            font-size: 13px;
+          }
+        }
+        
+        .preview-description, .preview-return {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       }
       
@@ -674,6 +789,7 @@ onMounted(() => {
         transform: translateY(-5px);
         box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
         border-color: #c6e2ff;
+        cursor: pointer;
       }
     }
   }

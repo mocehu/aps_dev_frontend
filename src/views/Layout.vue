@@ -21,9 +21,16 @@
           <template #icon><file-outlined /></template>
           <router-link to="/logs">日志信息</router-link>
         </a-menu-item>
+        <a-menu-item key="/config">
+          <template #icon><setting-outlined /></template>
+          <router-link to="/config">系统配置</router-link>
+        </a-menu-item>
       </a-menu>
       <div class="header-actions">
-        <!-- 可以添加其他操作按钮，如用户信息等 -->
+        <a-button type="link" @click="openApiDocs">
+          <template #icon><book-outlined /></template>
+          接口文档
+        </a-button>
       </div>
     </a-layout-header>
     
@@ -46,7 +53,9 @@ import { useRoute } from 'vue-router'
 import { 
   CalendarOutlined, 
   UnorderedListOutlined, 
-  FileOutlined 
+  FileOutlined,
+  SettingOutlined,
+  BookOutlined
 } from '@ant-design/icons-vue'
 
 const route = useRoute()
@@ -69,6 +78,12 @@ watch(selectedKeys, (newValue) => {
 // 更新选中的菜单项
 const updateSelectedKeys = (keys: string[]) => {
   activeKeys.value = keys
+}
+
+// 打开接口文档
+const openApiDocs = () => {
+  const baseUrl = import.meta.env.VITE_BASE_URL || 'http://127.0.0.1:8000'
+  window.open(`${baseUrl}/docs`, '_blank')
 }
 </script>
 

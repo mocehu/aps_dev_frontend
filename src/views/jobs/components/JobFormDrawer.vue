@@ -64,17 +64,22 @@
           </template>
         </a-form-item>
 
-        <a-form-item name="job_id" label="任务ID">
-          <a-input-group compact>
-            <a-input
-              v-model:value="formDataCopy.job_id" 
-              placeholder="请输入任务ID"
-              addon-before="ID" 
-              style="width: calc(100% - 110px)"
-            />
-            <a-button style="width: 110px" @click="generateRandomId">随机生成</a-button>
-          </a-input-group>
-          <div class="form-helper-text">任务ID用于唯一标识此任务，可以包含字母、数字和下划线</div>
+        <a-form-item name="name" label="任务名称">
+          <a-input
+            v-model:value="formDataCopy.name" 
+            placeholder="请输入任务名称（便于识别）"
+            style="width: 100%"
+          />
+          <div class="form-helper-text">任务名称用于识别不同的任务，建议使用有意义的名称</div>
+        </a-form-item>
+
+        <a-form-item label="任务ID">
+          <a-input
+            v-model:value="formDataCopy.job_id" 
+            disabled
+            style="width: 100%"
+          />
+          <div class="form-helper-text">任务ID是任务的唯一标识，创建成功后自动生成</div>
         </a-form-item>
       </div>
 
@@ -288,6 +293,7 @@ interface FormData {
   trigger: string;
   kwargs: Record<string, any>;
   job_id: string;
+  name: string;
   trigger_args: Record<string, any>;
   [key: string]: any;
 }
@@ -317,6 +323,7 @@ const formDataCopy = ref<FormData>({
   trigger: '',
   kwargs: {},
   job_id: '',
+  name: '',
   trigger_args: {}
 })
 const formStepActive = ref(1)
@@ -361,7 +368,7 @@ watch(() => props.formData, (newVal) => {
 // 设置表单校验规则
 const rules = {
   func: [{ required: true, message: '请选择任务函数', trigger: 'change' }],
-  job_id: [{ required: true, message: '请输入任务ID', trigger: 'blur' }],
+  name: [{ required: false, message: '请输入任务名称', trigger: 'blur' }],
   trigger: [{ required: true, message: '请选择触发器类型', trigger: 'change' }]
 }
 
@@ -474,6 +481,9 @@ const changeFunc = (value: string) => {
   whatsFunc.value = value
   formStepActive.value = 2
   
+  // 自动生成任务ID
+  generateAutoId()
+  
   // 初始化kwargs
   if (value === 'another_task') {
     formDataCopy.value.kwargs = { param: '' }
@@ -511,28 +521,34 @@ const getFuncDescription = (funcName: string) => {
   return funcOption?.description || ''
 }
 
-// 生成随机ID
-const generateRandomId = () => {
-  const timestamp = Date.now().toString().slice(-6)
-  const randomStr = Math.random().toString(36).slice(2, 6)
-  formDataCopy.value.job_id = `job_${timestamp}_${randomStr}`
+// 根据任务函数和时间自动生成唯一ID
+const generateAutoId = () => {
+  if (!formDataCopy.value.func) return
+  
+  const func = formDataCopy.value.func
+  const timestamp = Date.now().toString()
+  const hash = Math.abs(timestamp.split('').reduce((a, b) => {
+    a = ((a << 5) - a) + b.charCodeAt(0)
+    return a & a
+  }, 0)).toString(36).slice(0, 4)
+  
+  formDataCopy.value.job_id = `${func}_${timestamp.slice(-8)}_${hash}`
 }
 
 // 提交表单
 const submitForm = async () => {
   try {
+    // 确保生成任务ID
+    if (!formDataCopy.value.job_id) {
+      generateAutoId()
+    }
+    
     // 表单校验
     await formRef.value.validate()
     
     // 参数校验
     let valid = true
     let errorMsg = ''
-    
-    // 检查任务ID
-    if (!formDataCopy.value.job_id) {
-      valid = false
-      errorMsg = '请输入任务ID'
-    }
     
     // 检查触发器参数
     if (formDataCopy.value.trigger === 'interval') {

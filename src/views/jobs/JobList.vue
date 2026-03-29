@@ -39,13 +39,21 @@
           <!-- 下次执行时间列 -->
           <template v-if="column.key === 'next_run_time'">
             <div class="next-run-time">
-              <a-tag :color="getTimeTagColor(record.next_run_time)" class="time-tag">
-                <calendar-outlined style="margin-right: 6px" />
-                <span>{{ formatNextRunTime(record.next_run_time) }}</span>
-              </a-tag>
-              <span class="time-relative" v-if="record.next_run_time">
-                {{ getRelativeTime(record.next_run_time) }}
-              </span>
+              <template v-if="record.status === '已暂停'">
+                <a-tag color="default" class="time-tag">
+                  <pause-outlined style="margin-right: 6px" />
+                  <span>已暂停</span>
+                </a-tag>
+              </template>
+              <template v-else>
+                <a-tag :color="getTimeTagColor(record.next_run_time)" class="time-tag">
+                  <calendar-outlined style="margin-right: 6px" />
+                  <span>{{ formatNextRunTime(record.next_run_time) }}</span>
+                </a-tag>
+                <span class="time-relative" v-if="record.next_run_time && isValidTime(record.next_run_time)">
+                  {{ getRelativeTime(record.next_run_time) }}
+                </span>
+              </template>
             </div>
           </template>
           
@@ -164,12 +172,21 @@ const initFormData = ref({
   trigger: '',
   kwargs: {},
   job_id: '',
+  name: '',
   trigger_args: {}
 })
 const loading = ref(false)
 
 // 表格配置
 const columns = [
+  {
+    title: '任务名称',
+    dataIndex: 'name',
+    key: 'name',
+    width: 150,
+    ellipsis: true,
+    resizable: true
+  },
   {
     title: '任务ID',
     dataIndex: 'id',
@@ -468,11 +485,23 @@ const changeStatus = async (status: string, row: any) => {
 }
 
 const submitForm = async (data: any) => {
+  const wasPaused = data.status === '已暂停'
+  
   if(data.id) {
     if(data.kwargs === ''){
       data.kwargs = {}
     }
     await apiEditJob(data)
+    
+    // 如果之前是暂停状态，更新后需要重新暂停
+    if (wasPaused) {
+      try {
+        await pauseJob(data.id)
+      } catch (e) {
+        console.error('恢复暂停状态失败', e)
+      }
+    }
+    
     message.success('修改成功')
   } else {
     await addJob(data)
@@ -514,46 +543,57 @@ const loadFuncOptions = async () => {
   }
 }
 
+// 检查时间是否有效
+const isValidTime = (timeStr: string | null | undefined) => {
+  if (!timeStr) return false
+  const parsed = dayjs(timeStr)
+  return parsed.isValid()
+}
+
 // 格式化下次执行时间的函数
 const formatNextRunTime = (timeStr: string | null | undefined) => {
   if (!timeStr) return '未设置'
-  return dayjs(timeStr).format('YYYY-MM-DD HH:mm:ss')
+  const parsed = dayjs(timeStr)
+  if (!parsed.isValid()) return '未设置'
+  return parsed.format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 获取相对时间（如"3小时后"、"2天后"）
 const getRelativeTime = (timeStr: string | null | undefined) => {
   if (!timeStr) return ''
+  const parsed = dayjs(timeStr)
+  if (!parsed.isValid()) return ''
   
   const now = dayjs()
-  const targetTime = dayjs(timeStr)
   
   // 如果目标时间已过，显示"已过期"
-  if (targetTime.isBefore(now)) {
+  if (parsed.isBefore(now)) {
     return '已过期'
   }
   
-  return targetTime.fromNow()
+  return parsed.fromNow()
 }
 
 // 根据时间确定标签颜色
 const getTimeTagColor = (timeStr: string | null | undefined) => {
   if (!timeStr) return 'default'
+  const parsed = dayjs(timeStr)
+  if (!parsed.isValid()) return 'default'
   
   const now = dayjs()
-  const targetTime = dayjs(timeStr)
   
   // 如果已过期
-  if (targetTime.isBefore(now)) {
+  if (parsed.isBefore(now)) {
     return 'red'
   }
   
   // 如果在24小时内
-  if (targetTime.diff(now, 'hour') < 24) {
+  if (parsed.diff(now, 'hour') < 24) {
     return 'orange'
   }
   
   // 如果在7天内
-  if (targetTime.diff(now, 'day') < 7) {
+  if (parsed.diff(now, 'day') < 7) {
     return 'green'
   }
   

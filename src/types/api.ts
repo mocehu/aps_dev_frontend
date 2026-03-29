@@ -14,6 +14,7 @@ export interface Job {
   kwargs: any;
   next_run_time: string;
   status: string;
+  name?: string;
   [key: string]: any;
 }
 

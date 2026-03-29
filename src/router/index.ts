@@ -31,6 +31,12 @@ const routes: Array<RouteRecordRaw> = [
         name: 'LogList',
         component: () => import('../views/logs/LogList.vue'),
         meta: { title: '日志信息' }
+      },
+      {
+        path: '/config',
+        name: 'Config',
+        component: () => import('../views/config/Config.vue'),
+        meta: { title: '系统配置' }
       }
     ]
   }

@@ -20,6 +20,9 @@
         </template>
         
         <a-descriptions :column="2" bordered>
+          <a-descriptions-item label="任务名称">
+            <span>{{ detailJobsLog.name || '未设置' }}</span>
+          </a-descriptions-item>
           <a-descriptions-item label="任务ID">
             <span class="id-text">{{ detailJobsLog.id }}</span>
           </a-descriptions-item>
@@ -37,17 +40,26 @@
           </a-descriptions-item>
           <a-descriptions-item label="下次执行时间">
             <div class="next-run-time">
-              <a-tag :color="getTimeTagColor(detailJobsLog.next_run_time)" class="time-tag">
-                <calendar-outlined style="margin-right: 6px" />
-                <span>{{ formatNextRunTime(detailJobsLog.next_run_time) }}</span>
-              </a-tag>
-              <span class="time-relative" v-if="detailJobsLog.next_run_time">
-                {{ getRelativeTime(detailJobsLog.next_run_time) }}
-              </span>
+              <template v-if="detailJobsLog.status === '已暂停'">
+                <a-tag color="default" class="time-tag">
+                  <pause-outlined style="margin-right: 6px" />
+                  <span>已暂停</span>
+                </a-tag>
+                <span class="time-relative" style="color: #909399">任务已暂停，不会自动执行</span>
+              </template>
+              <template v-else>
+                <a-tag :bordered="false" :color="getTimeTagColor(detailJobsLog.next_run_time)" class="time-tag">
+                  <calendar-outlined style="margin-right: 6px" />
+                  <span>{{ formatNextRunTime(detailJobsLog.next_run_time) }}</span>
+                </a-tag>
+                <span class="time-relative" v-if="detailJobsLog.next_run_time && isValidTime(detailJobsLog.next_run_time)">
+                  {{ getRelativeTime(detailJobsLog.next_run_time) }}
+                </span>
+              </template>
             </div>
           </a-descriptions-item>
           <a-descriptions-item label="状态">
-            <a-tag :color="detailJobsLog.status === '已暂停' ? 'red' : 'green'" class="status-tag" :style="{ width: 'auto', padding: '0 8px' }">
+            <a-tag :bordered="false" :color="detailJobsLog.status === '已暂停' ? 'red' : 'green'" class="status-tag" :style="{ width: 'auto', padding: '0 8px' }">
               <template #icon>
                 <pause-outlined v-if="detailJobsLog.status === '已暂停'" />
                 <play-circle-outlined v-else />
@@ -146,9 +158,30 @@
         <a-card class="log-list-card" :bordered="true">
           <template #title>
             <div class="card-header">
-              <history-outlined />
-              <span>执行记录</span>
-              <a-badge :count="missionLogTotal" :overflowCount="99" />
+              <div class="card-header-left">
+                <history-outlined />
+                <span>执行记录</span>
+                <a-badge :count="missionLogTotal" :overflowCount="99" />
+              </div>
+              <div class="card-header-right">
+                <a-switch 
+                  v-model:checked="autoRefresh" 
+                  size="small"
+                  @change="handleAutoRefreshChange"
+                >
+                  <template #checkedChildren>自动</template>
+                  <template #unCheckedChildren>手动</template>
+                </a-switch>
+                <a-button 
+                  type="text" 
+                  size="small" 
+                  @click="handleRefreshLog"
+                  :loading="refreshing"
+                >
+                  <template #icon><reload-outlined /></template>
+                  刷新
+                </a-button>
+              </div>
             </div>
           </template>
           
@@ -306,7 +339,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import dayjs from 'dayjs'
@@ -321,7 +354,6 @@ import {
   PlayCircleOutlined,
   EditOutlined,
   DeleteOutlined,
-  EyeOutlined,
   ThunderboltOutlined,
   InfoCircleOutlined,
   FilterOutlined,
@@ -332,8 +364,6 @@ import {
   FileTextOutlined,
   CodeOutlined,
   HourglassOutlined,
-  SyncOutlined,
-  NumberOutlined,
   HistoryOutlined,
   ArrowLeftOutlined,
   FileSearchOutlined
@@ -351,7 +381,7 @@ import {
   getLog,
   immediateJob
 } from '../../api/index'
-import type { Job, LogResponse, LogItem, ApiResponse, FuncOption } from '../../types/api'
+import type { Job, LogItem, FuncOption } from '../../types/api'
 
 // 初始化dayjs插件
 dayjs.extend(relativeTime)
@@ -390,6 +420,9 @@ const funcOptions = ref([])
 
 // 添加loading状态
 const loading = ref(false)
+const refreshing = ref(false)
+const autoRefresh = ref(false)
+let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 // 方法
 const loadJobDetail = async () => {
@@ -463,19 +496,43 @@ const getMissionLogTableData = async (page = 1, pageSize = 10) => {
   }
 }
 
-const missionLogSizeChange = (val: number) => {
-  missionLogPageSize.value = val
-  getMissionLogTableData(missionLogCurrentPage.value, missionLogPageSize.value)
-}
-
-const missionLogCurrentChange = (val: number) => {
-  missionLogCurrentPage.value = val
-  getMissionLogTableData(missionLogCurrentPage.value, missionLogPageSize.value)
-}
 
 const showDetailLogMessage = (row: any, index: number) => {
   selectedLogIndex.value = index
   detailLogMessage.value = row
+}
+
+const handleRefreshLog = async () => {
+  refreshing.value = true
+  try {
+    await getMissionLogTableData(missionLogCurrentPage.value, missionLogPageSize.value)
+  } finally {
+    refreshing.value = false
+  }
+}
+
+const startAutoRefresh = () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
+  refreshTimer = setInterval(() => {
+    getMissionLogTableData(missionLogCurrentPage.value, missionLogPageSize.value)
+  }, 10000)
+}
+
+const stopAutoRefresh = () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+const handleAutoRefreshChange = (checked: boolean) => {
+  if (checked) {
+    startAutoRefresh()
+  } else {
+    stopAutoRefresh()
+  }
 }
 
 const searchSelectValue = (value: any) => {
@@ -664,11 +721,23 @@ const changeStatus = async (status: string, row: any) => {
 }
 
 const submitForm = async (data: any) => {
+  const wasPaused = data.status === '已暂停'
+  
   try {
     if(data.kwargs === ''){
       data.kwargs = {}
     }
     await apiEditJob(data)
+    
+    // 如果之前是暂停状态，更新后需要重新暂停
+    if (wasPaused) {
+      try {
+        await pauseJob(data.id || data.job_id)
+      } catch (e) {
+        console.error('恢复暂停状态失败', e)
+      }
+    }
+    
     message.success('修改成功')
     loadJobDetail()
     drawer.value = false
@@ -681,52 +750,37 @@ const closeDrawer = () => {
   drawer.value = false
 }
 
+// 检查时间是否有效
+const isValidTime = (timeStr: string | undefined | null) => {
+  if (!timeStr) return false
+  const parsed = dayjs(timeStr)
+  return parsed.isValid()
+}
+
 // 格式化下次执行时间的函数
 const formatNextRunTime = (timeStr: string | undefined | null) => {
   if (!timeStr) return '未设置'
-  return dayjs(timeStr).format('YYYY-MM-DD HH:mm:ss')
+  const parsed = dayjs(timeStr)
+  if (!parsed.isValid()) return '未设置'
+  return parsed.format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 获取相对时间（如"3小时后"、"2天后"）
 const getRelativeTime = (timeStr: string | undefined | null) => {
   if (!timeStr) return ''
+  const parsed = dayjs(timeStr)
+  if (!parsed.isValid()) return ''
   
   const now = dayjs()
-  const targetTime = dayjs(timeStr)
   
   // 如果目标时间已过，显示"已过期"
-  if (targetTime.isBefore(now)) {
+  if (parsed.isBefore(now)) {
     return '已过期'
   }
   
-  return targetTime.fromNow()
+  return parsed.fromNow()
 }
 
-// 根据时间确定标签类型
-const getTimeTagType = (timeStr: string | undefined | null) => {
-  if (!timeStr) return 'info'
-  
-  const now = dayjs()
-  const targetTime = dayjs(timeStr)
-  
-  // 如果已过期
-  if (targetTime.isBefore(now)) {
-    return 'danger'
-  }
-  
-  // 如果在24小时内
-  if (targetTime.diff(now, 'hour') < 24) {
-    return 'warning'
-  }
-  
-  // 如果在7天内
-  if (targetTime.diff(now, 'day') < 7) {
-    return 'success'
-  }
-  
-  // 更远的未来
-  return 'info'
-}
 
 // 格式化日志时间，只显示时间部分
 const formatLogTime = (timeStr: string | undefined | null) => {
@@ -783,22 +837,23 @@ const getTriggerColor = (trigger: string) => {
 // 添加getTimeTagColor方法
 const getTimeTagColor = (timeStr: string | null | undefined) => {
   if (!timeStr) return 'default'
+  const parsed = dayjs(timeStr)
+  if (!parsed.isValid()) return 'default'
   
   const now = dayjs()
-  const targetTime = dayjs(timeStr)
   
   // 如果已过期
-  if (targetTime.isBefore(now)) {
+  if (parsed.isBefore(now)) {
     return 'red'
   }
   
   // 如果在24小时内
-  if (targetTime.diff(now, 'hour') < 24) {
+  if (parsed.diff(now, 'hour') < 24) {
     return 'orange'
   }
   
   // 如果在7天内
-  if (targetTime.diff(now, 'day') < 7) {
+  if (parsed.diff(now, 'day') < 7) {
     return 'green'
   }
   
@@ -816,6 +871,10 @@ const formatTooltipContent = (content: string | object) => {
 
 onMounted(() => {
   loadJobDetail()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>
 
@@ -864,6 +923,19 @@ onMounted(() => {
         display: flex;
         align-items: center;
         gap: 8px;
+        
+        .card-header-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .card-header-right {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-left: auto;
+        }
       }
     }
     

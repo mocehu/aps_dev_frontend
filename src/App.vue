@@ -21,13 +21,6 @@ html, body {
 }
 
 /* 时间标签样式 */
-.time-tag {
-  display: inline-block;
-  padding: 6px 10px;
-  font-size: 14px;
-  line-height: 1.5;
-  border-radius: 2px;
-}
 
 .time-tag-danger {
   color: #ff4d4f;
