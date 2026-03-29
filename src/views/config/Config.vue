@@ -8,70 +8,74 @@
               <a-alert type="info" show-icon style="margin-bottom: 16px">
                 <template #message>修改配置后立即生效，无需重启服务</template>
               </a-alert>
-              
+
               <a-divider orientation="left">日志配置</a-divider>
-              
+
               <a-descriptions bordered :column="1">
                 <a-descriptions-item label="日志保留天数">
-                  <a-input-number 
-                    v-model:value="configData.log_retention_days"
-                    :min="1"
-                    :max="365"
-                    addon-after="天"
+                  <a-input-number
+                      v-model:value="configData.log_retention_days"
+                      :min="1"
+                      :max="365"
+                      addon-after="天"
                   />
                 </a-descriptions-item>
                 <a-descriptions-item label="最大日志数量">
-                  <a-input-number 
-                    v-model:value="configData.log_max_count"
-                    :min="1000"
-                    :max="1000000"
-                    :step="10000"
-                    addon-after="条"
+                  <a-input-number
+                      v-model:value="configData.log_max_count"
+                      :min="1000"
+                      :max="1000000"
+                      :step="10000"
+                      addon-after="条"
                   />
                 </a-descriptions-item>
                 <a-descriptions-item label="自动清理日志">
-                  <a-switch 
-                    v-model:checked="autoCleanupEnabled"
-                    checked-children="开启"
-                    un-checked-children="关闭"
+                  <a-switch
+                      v-model:checked="autoCleanupEnabled"
+                      checked-children="开启"
+                      un-checked-children="关闭"
                   />
                 </a-descriptions-item>
                 <a-descriptions-item label="清理执行时间" v-if="autoCleanupEnabled">
-                  <a-input-number 
-                    v-model:value="configData.log_cleanup_hour"
-                    :min="0"
-                    :max="23"
-                    addon-after="点"
+                  <a-input-number
+                      v-model:value="configData.log_cleanup_hour"
+                      :min="0"
+                      :max="23"
+                      addon-after="点"
                   />
                 </a-descriptions-item>
               </a-descriptions>
-              
+
               <a-divider orientation="left" style="margin-top: 24px">API 认证配置</a-divider>
-              
+
               <a-descriptions bordered :column="1">
                 <a-descriptions-item label="启用 API 认证">
-                  <a-switch 
-                    v-model:checked="apiKeyEnabled"
-                    checked-children="开启"
-                    un-checked-children="关闭"
+                  <a-switch
+                      v-model:checked="apiKeyEnabled"
+                      checked-children="开启"
+                      un-checked-children="关闭"
                   />
                 </a-descriptions-item>
                 <a-descriptions-item label="API Key">
-                  <a-input-password 
-                    v-model:value="configData.api_key" 
-                    placeholder="请输入 API Key"
-                    allow-clear
+                  <a-input-password
+                      v-model:value="configData.api_key"
+                      placeholder="请输入 API Key"
+                      allow-clear
                   />
                 </a-descriptions-item>
               </a-descriptions>
-              
+
               <a-flex justify="flex-end" style="margin-top: 24px" gap="middle">
                 <a-button type="primary" @click="saveConfig" :loading="saving">
-                  <template #icon><save-outlined /></template>
+                  <template #icon>
+                    <save-outlined/>
+                  </template>
                   保存配置
                 </a-button>
                 <a-button @click="resetConfig">
-                  <template #icon><reload-outlined /></template>
+                  <template #icon>
+                    <reload-outlined/>
+                  </template>
                   重置
                 </a-button>
               </a-flex>
@@ -79,7 +83,7 @@
           </a-spin>
         </a-card>
       </a-col>
-      
+
       <a-col :span="8">
         <a-card :bordered="false" title="版本信息" style="margin-bottom: 24px">
           <a-spin :spinning="versionLoading">
@@ -92,24 +96,28 @@
               </a-descriptions-item>
             </a-descriptions>
           </a-spin>
-          
-          <a-divider style="margin: 12px 0" />
-          
+
+          <a-divider style="margin: 12px 0"/>
+
           <a-space direction="vertical" style="width: 100%">
             <a-button @click="handleCheckUpdate" :loading="checkingUpdate" block>
-              <template #icon><sync-outlined /></template>
+              <template #icon>
+                <sync-outlined/>
+              </template>
               检查更新
             </a-button>
-            
+
             <a-button @click="handleViewReleaseNotes" :loading="loadingNotes" block>
-              <template #icon><file-text-outlined /></template>
+              <template #icon>
+                <file-text-outlined/>
+              </template>
               查看更新日志
             </a-button>
-            
-            <a-alert 
-              v-if="updateResult" 
-              :type="updateResult.has_update ? 'warning' : 'success'"
-              show-icon
+
+            <a-alert
+                v-if="updateResult"
+                :type="updateResult.has_update ? 'warning' : 'success'"
+                show-icon
             >
               <template #message>
                 <template v-if="updateResult.has_update">
@@ -126,20 +134,20 @@
 
       </a-col>
     </a-row>
-    
+
     <a-modal
-      v-model:open="notesModalVisible"
-      title="更新日志"
-      :footer="null"
-      width="700px"
+        v-model:open="notesModalVisible"
+        title="更新日志"
+        :footer="null"
+        width="700px"
     >
       <a-spin :spinning="loadingNotes">
         <template v-if="releaseNotesList && releaseNotesList.length > 0">
           <a-collapse v-model:activeKey="activeReleaseKey" accordion>
-            <a-collapse-panel 
-              v-for="(note, index) in releaseNotesList" 
-              :key="index"
-              :header="note.name || note.version"
+            <a-collapse-panel
+                v-for="(note, index) in releaseNotesList"
+                :key="index"
+                :header="note.name || note.version"
             >
               <template #extra>
                 <a-space>
@@ -149,42 +157,53 @@
                   </span>
                 </a-space>
               </template>
-              
+
               <a-descriptions :column="1" size="small">
                 <a-descriptions-item label="发布时间" v-if="note.published_at">
                   {{ formatDate(note.published_at) }}
                 </a-descriptions-item>
                 <a-descriptions-item label="下载地址" v-if="note.html_url">
                   <a :href="note.html_url" target="_blank">
-                    <link-outlined /> GitHub Release
+                    <link-outlined/>
+                    GitHub Release
                   </a>
                 </a-descriptions-item>
               </a-descriptions>
-              
-              <a-divider style="margin: 12px 0" />
-              
-<template v-if="note.body">
-                  <a-typography>
-                    <pre style="white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.6; background: #f5f5f5; padding: 12px; border-radius: 4px">{{ note.body }}</pre>
-                  </a-typography>
-                </template>
-                <a-empty v-else description="暂无更新说明" image="simple" />
+
+              <a-divider style="margin: 12px 0"/>
+
+              <template v-if="note.body">
+                <a-typography>
+                  <pre
+                      style="white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.6; background: #f5f5f5; padding: 12px; border-radius: 4px">{{
+                      note.body
+                    }}</pre>
+                </a-typography>
+              </template>
+              <ThunderboltTwoTone/>
             </a-collapse-panel>
           </a-collapse>
         </template>
-        <a-empty v-else description="暂无更新日志" image="simple" />
+        <a-empty v-else :image="simpleImage" description="暂无更新日志"/>
       </a-spin>
     </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { message } from 'ant-design-vue'
-import { SaveOutlined, ReloadOutlined, SyncOutlined, FileTextOutlined, LinkOutlined } from '@ant-design/icons-vue'
-import { 
-  getConfigs, 
-  batchUpdateConfig, 
+import {ref, computed, onMounted} from 'vue'
+import {message, Empty} from 'ant-design-vue'
+import {
+  SaveOutlined,
+  ReloadOutlined,
+  SyncOutlined,
+  FileTextOutlined,
+  LinkOutlined,
+  ThunderboltTwoTone
+} from '@ant-design/icons-vue'
+import {
+  getConfigs,
+  batchUpdateConfig,
   ConfigItem,
   getVersion,
   checkUpdate,
@@ -193,8 +212,9 @@ import {
   UpdateCheckResult,
   ReleaseNote
 } from '../../api/index'
-import { getApiKey, setApiKey } from '../../utils/request'
+import {setApiKey} from '../../utils/request'
 
+const simpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 const loading = ref(false)
 const saving = ref(false)
 const versionLoading = ref(false)
@@ -230,18 +250,6 @@ const apiKeyEnabled = computed({
   }
 })
 
-const docColumns = [
-  { title: '配置键', key: 'key', dataIndex: 'key', width: 140 },
-  { title: '类型', dataIndex: 'type', width: 60 },
-  { title: '说明', dataIndex: 'desc' }
-]
-
-const configDocs = [
-  { key: 'log_retention_days', type: '整数', desc: '日志保留天数' },
-  { key: 'log_max_count', type: '整数', desc: '最大日志数量' },
-  { key: 'log_auto_cleanup', type: '布尔', desc: '是否启用自动清理' },
-  { key: 'log_cleanup_hour', type: '整数', desc: '清理执行时间（0-23点）' }
-]
 
 const loadConfig = async () => {
   loading.value = true
@@ -333,12 +341,12 @@ const saveConfig = async () => {
       api_key_enabled: configData.value.api_key_enabled,
       api_key: configData.value.api_key
     }
-    
+
     const res = await batchUpdateConfig(configs)
     if (res.code === 200) {
       message.success('配置保存成功')
       originalConfig.value = res.data
-      
+
       if (configData.value.api_key) {
         setApiKey(configData.value.api_key)
       }
