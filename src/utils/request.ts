@@ -10,12 +10,50 @@ const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://192.168.2.78:8000';
 
 const request = axios.create({
   baseURL: BASE_URL,
-  timeout: 30000  // Increased timeout to 30 seconds
+  timeout: 30000
 });
+
+// 保存 API Key 的 key
+const API_KEY_STORAGE_KEY = 'API_KEY';
+
+// 获取 API Key
+export const getApiKey = (): string | null => {
+  return localStorage.getItem(API_KEY_STORAGE_KEY);
+};
+
+// 设置 API Key
+export const setApiKey = (key: string): void => {
+  localStorage.setItem(API_KEY_STORAGE_KEY, key);
+};
+
+// 移除 API Key
+export const removeApiKey = (): void => {
+  localStorage.removeItem(API_KEY_STORAGE_KEY);
+};
+
+// API Key 错误事件总线
+type ApiKeyErrorCallback = () => void;
+const apiKeyErrorCallbacks: ApiKeyErrorCallback[] = [];
+
+export const onApiKeyError = (callback: ApiKeyErrorCallback) => {
+  apiKeyErrorCallbacks.push(callback);
+};
+
+export const emitApiKeyError = () => {
+  apiKeyErrorCallbacks.forEach(cb => cb());
+};
 
 // 请求拦截器
 request.interceptors.request.use((config) => {
+  // 添加原有的 token
   config.headers.token = localStorage.getItem('TOKEN');
+  
+  // 添加 API Key
+  const apiKey = getApiKey();
+  if (apiKey) {
+    config.headers['X-API-Key'] = apiKey;
+  }
+  
   return config;
 });
 
@@ -37,8 +75,15 @@ request.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    if (error.response && error.response.status) {
-      message.error(error.message);
+    if (error.response) {
+      // 处理 401 未授权错误
+      if (error.response.status === 401) {
+        const errorData = error.response.data;
+        message.error(errorData?.msg || 'API Key 无效或未设置，请检查配置');
+        emitApiKeyError();
+      } else {
+        message.error(error.message);
+      }
     }
     return Promise.reject(error);
   }

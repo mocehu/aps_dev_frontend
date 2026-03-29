@@ -3,7 +3,7 @@
     <a-card :bordered="false" :shadow="false">
       <template #title>
         <div class="card-header">
-          <h2>可用任务</h2>
+          <h2>可用函数</h2>
           <div class="header-actions">
             <a-button type="primary" @click="goToJobList">查看计划任务</a-button>
           </div>

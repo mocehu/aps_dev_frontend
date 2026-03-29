@@ -25,6 +25,13 @@ export function getJobs(page?: number, pageSize?: number): Promise<ApiResponse<J
   });
 }
 
+export function getJob(jobId: string): Promise<ApiResponse<Job>> {
+  return request({
+    url: '/job/' + jobId,
+    method: 'get'
+  });
+}
+
 export function pauseJob(id: string): Promise<ApiResponse<any>> {
   return request({
     url: '/pause-job/' + id,
@@ -49,6 +56,13 @@ export function deleteJob(id: string): Promise<ApiResponse<any>> {
 export function getFuncOptions(): Promise<ApiResponse<FuncOption[] | TaskCategory>> {
   return request({
     url: '/available-tasks/',
+    method: 'get'
+  });
+}
+
+export function getTaskInfo(taskName: string): Promise<ApiResponse<FuncOption>> {
+  return request({
+    url: '/task-info/' + taskName,
     method: 'get'
   });
 }

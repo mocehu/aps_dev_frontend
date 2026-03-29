@@ -24,7 +24,7 @@ const routes: Array<RouteRecordRaw> = [
         path: '/tasks',
         name: 'TaskList',
         component: () => import('../views/tasks/TaskList.vue'),
-        meta: { title: '可用任务' }
+        meta: { title: '可用函数' }
       },
       {
         path: '/logs',

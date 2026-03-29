@@ -15,7 +15,7 @@
         </a-menu-item>
         <a-menu-item key="/tasks">
           <template #icon><unordered-list-outlined /></template>
-          <router-link to="/tasks">可用任务</router-link>
+          <router-link to="/tasks">可用函数</router-link>
         </a-menu-item>
         <a-menu-item key="/logs">
           <template #icon><file-outlined /></template>

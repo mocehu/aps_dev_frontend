@@ -9,6 +9,8 @@
                 <template #message>修改配置后立即生效，无需重启服务</template>
               </a-alert>
               
+              <a-divider orientation="left">日志配置</a-divider>
+              
               <a-descriptions bordered :column="1">
                 <a-descriptions-item label="日志保留天数">
                   <a-input-number 
@@ -40,6 +42,25 @@
                     :min="0"
                     :max="23"
                     addon-after="点"
+                  />
+                </a-descriptions-item>
+              </a-descriptions>
+              
+              <a-divider orientation="left" style="margin-top: 24px">API 认证配置</a-divider>
+              
+              <a-descriptions bordered :column="1">
+                <a-descriptions-item label="启用 API 认证">
+                  <a-switch 
+                    v-model:checked="apiKeyEnabled"
+                    checked-children="开启"
+                    un-checked-children="关闭"
+                  />
+                </a-descriptions-item>
+                <a-descriptions-item label="API Key">
+                  <a-input-password 
+                    v-model:value="configData.api_key" 
+                    placeholder="请输入 API Key"
+                    allow-clear
                   />
                 </a-descriptions-item>
               </a-descriptions>
@@ -102,21 +123,7 @@
             </a-alert>
           </a-space>
         </a-card>
-        
-        <a-card :bordered="false" title="配置说明">
-          <a-table 
-            :data-source="configDocs" 
-            :columns="docColumns"
-            :pagination="false"
-            size="small"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'key'">
-                <a-typography-text code>{{ record.key }}</a-typography-text>
-              </template>
-            </template>
-          </a-table>
-        </a-card>
+
       </a-col>
     </a-row>
     
@@ -186,6 +193,7 @@ import {
   UpdateCheckResult,
   ReleaseNote
 } from '../../api/index'
+import { getApiKey, setApiKey } from '../../utils/request'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -203,13 +211,22 @@ const configData = ref({
   log_retention_days: 30,
   log_max_count: 100000,
   log_auto_cleanup: 'false',
-  log_cleanup_hour: 3
+  log_cleanup_hour: 3,
+  api_key_enabled: 'true',
+  api_key: ''
 })
 
 const autoCleanupEnabled = computed({
   get: () => configData.value.log_auto_cleanup === 'true',
   set: (val: boolean) => {
     configData.value.log_auto_cleanup = val ? 'true' : 'false'
+  }
+})
+
+const apiKeyEnabled = computed({
+  get: () => configData.value.api_key_enabled === 'true',
+  set: (val: boolean) => {
+    configData.value.api_key_enabled = val ? 'true' : 'false'
   }
 })
 
@@ -236,7 +253,9 @@ const loadConfig = async () => {
         log_retention_days: parseInt(res.data.log_retention_days?.value || '30'),
         log_max_count: parseInt(res.data.log_max_count?.value || '100000'),
         log_auto_cleanup: res.data.log_auto_cleanup?.value || 'false',
-        log_cleanup_hour: parseInt(res.data.log_cleanup_hour?.value || '3')
+        log_cleanup_hour: parseInt(res.data.log_cleanup_hour?.value || '3'),
+        api_key_enabled: res.data.api_key_enabled?.value || 'true',
+        api_key: res.data.api_key?.value || ''
       }
     }
   } catch (error) {
@@ -306,17 +325,23 @@ const formatDate = (dateStr: string) => {
 const saveConfig = async () => {
   saving.value = true
   try {
-    const configs = {
+    const configs: Record<string, string> = {
       log_retention_days: configData.value.log_retention_days.toString(),
       log_max_count: configData.value.log_max_count.toString(),
       log_auto_cleanup: configData.value.log_auto_cleanup,
-      log_cleanup_hour: configData.value.log_cleanup_hour.toString()
+      log_cleanup_hour: configData.value.log_cleanup_hour.toString(),
+      api_key_enabled: configData.value.api_key_enabled,
+      api_key: configData.value.api_key
     }
     
     const res = await batchUpdateConfig(configs)
     if (res.code === 200) {
       message.success('配置保存成功')
       originalConfig.value = res.data
+      
+      if (configData.value.api_key) {
+        setApiKey(configData.value.api_key)
+      }
     } else {
       message.error(res.msg || '保存失败')
     }
@@ -334,7 +359,9 @@ const resetConfig = () => {
       log_retention_days: parseInt(originalConfig.value.log_retention_days?.value || '30'),
       log_max_count: parseInt(originalConfig.value.log_max_count?.value || '100000'),
       log_auto_cleanup: originalConfig.value.log_auto_cleanup?.value || 'false',
-      log_cleanup_hour: parseInt(originalConfig.value.log_cleanup_hour?.value || '3')
+      log_cleanup_hour: parseInt(originalConfig.value.log_cleanup_hour?.value || '3'),
+      api_key_enabled: originalConfig.value.api_key_enabled?.value || 'true',
+      api_key: originalConfig.value.api_key?.value || ''
     }
     message.info('已重置为原始配置')
   }

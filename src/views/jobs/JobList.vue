@@ -148,10 +148,11 @@ import {
   pauseJob,
   resumeJob,
   deleteJob as apiDeleteJob,
-  getFuncOptions,
   addJob,
   editJob as apiEditJob,
-  immediateJob
+  immediateJob,
+  getJob,
+  getTaskInfo
 } from '../../api/index'
 
 const router = useRouter()
@@ -327,125 +328,132 @@ const createJob = async () => {
 }
 
 const editJob = async (row: any) => {
-  await loadFuncOptions()
   drawerTitle.value = '修改任务'
-  const data = _.cloneDeep(row)
   
-  // 处理kwargs
-  if(data.func === 'example_task'){
-    // 检查kwargs是否已经是对象类型
-    if (typeof data.kwargs === 'string') {
-      // 如果是字符串类型，需要进行分割
-      const parts = data.kwargs.split('-');
-      data.kwargs = {
-        arg1: parts[0] || '',
-        arg2: parseInt(parts[1] || '0')
-      }
-    }
-    // 否则保持原样，假设它已经是 {arg1, arg2} 的格式
-  } else if(data.func === 'another_task') {
-    if (typeof data.kwargs === 'string') {
-      data.kwargs = {
-        param: data.kwargs
-      }
-    } else if (data.kwargs && 'param' in data.kwargs) {
-      // 已经是正确格式，不需要处理
-    } else {
-      data.kwargs = { param: '' }
-    }
-  } else if(data.func === 'run_os_command' || data.func === 'run_python_command') {
-    if (typeof data.kwargs === 'string') {
-      data.kwargs = {
-        "command": data.kwargs
-      }
-    } else if (data.kwargs && 'command' in data.kwargs) {
-      // 已经是正确格式，不需要处理
-    } else {
-      data.kwargs = { command: '' }
-    }
-  }
-  
-  // 处理trigger
-  if (data.trigger && data.trigger.includes(' : ')) {
-    const parts = data.trigger.split(' : ');
-    const triggers = parts[0];
-    const triggerArgs = parts.length > 1 ? parts[1] : '';
-    data.trigger_args = {};
-    
-    if(triggers === '周期性任务') {
-      data.trigger = 'interval';
+  try {
+    // 获取任务详情
+    const jobResponse = await getJob(row.id)
+    if (jobResponse && jobResponse.code === 200 && jobResponse.data) {
+      const data = _.cloneDeep(jobResponse.data)
       
-      if (triggerArgs) {
-        triggerArgs.split(', ').forEach((item: string) => {
-          // 检查天数，支持单数day和复数days
-          if(item.includes(' day')) {
-            // 提取数字部分，然后转换为整数
-            const daysMatch = item.match(/(\d+)\s+days?/);
-            if (daysMatch && daysMatch[1]) {
-              data.trigger_args.days = parseInt(daysMatch[1]) || 0;
-            } else {
-              // 如果匹配失败，尝试直接提取数字
-              const firstPart = item.split(' ')[0];
-              data.trigger_args.days = parseInt(firstPart) || 0;
-            }
-          } else if (item && item.includes(':')) {
-            const timeParts = item.split(':');
-            const hours = timeParts[0] || '0';
-            const minutes = timeParts.length > 1 ? timeParts[1] : '0';
-            const seconds = timeParts.length > 2 ? timeParts[2] : '0';
-            
-            // 更安全的方式处理字符串到数字的转换
-            data.trigger_args.hours = parseInt(hours) || 0;
-            data.trigger_args.minutes = parseInt(minutes) || 0;
-            data.trigger_args.seconds = parseInt(seconds) || 0;
+      // 获取函数详情
+      const taskResponse = await getTaskInfo(data.func)
+      if (taskResponse && taskResponse.code === 200 && taskResponse.data) {
+        const taskInfo = taskResponse.data
+        funcOptions.value = [{
+          label: taskInfo.name,
+          value: taskInfo.name,
+          description: taskInfo.description,
+          parameters: taskInfo.parameters
+        }]
+      }
+      
+      // 处理kwargs
+      if(data.func === 'example_task'){
+        if (typeof data.kwargs === 'string') {
+          const parts = data.kwargs.split('-');
+          data.kwargs = {
+            arg1: parts[0] || '',
+            arg2: parseInt(parts[1] || '0')
           }
-        });
+        } else if (data.kwargs && 'arg1' in data.kwargs && 'arg2' in data.kwargs) {
+          // 已经是正确格式
+        } else {
+          data.kwargs = { arg1: '', arg2: 0 }
+        }
+      } else if(data.func === 'another_task') {
+        if (typeof data.kwargs === 'string') {
+          data.kwargs = { param: data.kwargs }
+        } else if (data.kwargs && 'param' in data.kwargs) {
+          // 已经是正确格式
+        } else {
+          data.kwargs = { param: '' }
+        }
+      } else if(data.func === 'run_os_command' || data.func === 'run_python_command') {
+        if (typeof data.kwargs === 'string') {
+          data.kwargs = { command: data.kwargs }
+        } else if (data.kwargs && 'command' in data.kwargs) {
+          // 已经是正确格式
+        } else {
+          data.kwargs = { command: '' }
+        }
+      }
+      
+      // 处理trigger
+      if (data.trigger) {
+        data.trigger_args = {};
+        
+        // 解析格式: "interval[0:01:00]" 或 "cron[hour='8', minute='30']" 或 "date[2024-01-01 12:00:00]"
+        const triggerMatch = data.trigger.match(/^(\w+)\[(.+)\]$/);
+        
+        if (triggerMatch) {
+          const triggerType = triggerMatch[1];
+          const triggerArgs = triggerMatch[2];
+          
+          if (triggerType === 'interval') {
+            data.trigger = 'interval';
+            
+            // 格式: "days:hours:minutes:seconds" 或 "hours:minutes:seconds"
+            const timeParts = triggerArgs.split(':');
+            if (timeParts.length === 4) {
+              data.trigger_args.days = parseInt(timeParts[0]) || 0;
+              data.trigger_args.hours = parseInt(timeParts[1]) || 0;
+              data.trigger_args.minutes = parseInt(timeParts[2]) || 0;
+              data.trigger_args.seconds = parseInt(timeParts[3]) || 0;
+            } else if (timeParts.length === 3) {
+              data.trigger_args.days = 0;
+              data.trigger_args.hours = parseInt(timeParts[0]) || 0;
+              data.trigger_args.minutes = parseInt(timeParts[1]) || 0;
+              data.trigger_args.seconds = parseInt(timeParts[2]) || 0;
+            } else {
+              data.trigger_args = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+            }
+          } else if (triggerType === 'cron') {
+            data.trigger = 'cron';
+            
+            triggerArgs.split(',').forEach((item: string) => {
+              const match = item.trim().match(/(\w+)\s*=\s*(.+)/);
+              if (match) {
+                const key = match[1].trim();
+                const value = match[2].trim().replace(/['"]/g, '');
+                data.trigger_args[key] = key === 'week' || key === 'day_of_week' ? value : (parseInt(value) || 0);
+              }
+            });
+            
+            const cronFields = ['year', 'month', 'day', 'week', 'day_of_week', 'hour', 'minute', 'second'];
+            cronFields.forEach(field => {
+              if (data.trigger_args[field] === undefined) {
+                data.trigger_args[field] = field === 'week' || field === 'day_of_week' ? '*' : 0;
+              }
+            });
+          } else if (triggerType === 'date') {
+            data.trigger = 'date';
+            data.trigger_args = {
+              run_date: triggerArgs.replace(/['"]/g, '')
+            };
+          }
+        } else {
+          data.trigger = 'interval';
+          data.trigger_args = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+        }
       } else {
-        // 设置默认值
+        data.trigger = 'interval';
         data.trigger_args = { days: 0, hours: 0, minutes: 0, seconds: 0 };
       }
-    } else if(triggers === '特定时间周期') {
-      data.trigger = 'cron';
       
-      if (triggerArgs) {
-        triggerArgs.split(',').forEach((item: string) => {
-          if (item && item.includes('=')) {
-            const keyValue = item.split('=');
-            const key = keyValue[0].trim();
-            // 确保value存在
-            if (keyValue.length > 1) {
-              const value = keyValue[1].replace(/['"]/g, '');
-              data.trigger_args[key] = parseInt(value) || 0;
-            }
-          }
-        });
+      formData.value = {
+        ...data,
+        job_id: data.id
       }
       
-      // 确保所有必要的字段都有默认值
-      const cronFields = ['year', 'month', 'day', 'week', 'hour', 'minute', 'second'];
-      cronFields.forEach(field => {
-        if (data.trigger_args[field] === undefined) {
-          data.trigger_args[field] = 0;
-        }
-      });
+      drawer.value = true
     } else {
-      data.trigger = 'date';
-      data.trigger_args = {
-        run_date: triggerArgs || ''
-      };
+      message.error('获取任务详情失败')
     }
-  } else {
-    // 如果trigger格式不正确，设置默认值
-    data.trigger = 'interval';
-    data.trigger_args = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+  } catch (error) {
+    message.error('加载任务详情失败')
+    console.error(error)
   }
-  
-  formData.value = {
-    ...data,
-    job_id: data.id
-  }
-  
-  drawer.value = true
 }
 
 const deleteJob = (row: any) => {
