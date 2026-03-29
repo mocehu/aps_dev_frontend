@@ -1,4 +1,4 @@
-function resetObj(obj) {
+function resetObj(obj: unknown) {
   if (typeOfs(obj) === '[object Object]') {
       Object.values(obj).forEach(i => {
         if(typeOfs(i) === 'string') {
@@ -20,7 +20,7 @@ function resetObj(obj) {
   }
 }
 
-function typeOfs (value) {
+function typeOfs (value: unknown) {
   return Object.prototype.toString.call(value)
   switch (value) {
     case Object.prototype.toString.call(value) === "[object Object]":

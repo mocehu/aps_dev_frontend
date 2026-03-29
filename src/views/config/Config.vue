@@ -141,6 +141,7 @@
         :footer="null"
         width="700px"
     >
+
       <a-spin :spinning="loadingNotes">
         <template v-if="releaseNotesList && releaseNotesList.length > 0">
           <a-collapse v-model:activeKey="activeReleaseKey" accordion>
@@ -180,7 +181,6 @@
                     }}</pre>
                 </a-typography>
               </template>
-              <ThunderboltTwoTone/>
             </a-collapse-panel>
           </a-collapse>
         </template>
@@ -198,9 +198,7 @@ import {
   ReloadOutlined,
   SyncOutlined,
   FileTextOutlined,
-  LinkOutlined,
-  ThunderboltTwoTone
-} from '@ant-design/icons-vue'
+  LinkOutlined} from '@ant-design/icons-vue'
 import {
   getConfigs,
   batchUpdateConfig,

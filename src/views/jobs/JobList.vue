@@ -152,7 +152,7 @@ import {
   editJob as apiEditJob,
   immediateJob,
   getJob,
-  getTaskInfo
+  getTaskInfo, getFuncOptions
 } from '../../api/index'
 
 const router = useRouter()
@@ -314,7 +314,7 @@ const getjobTableData = async (page = 1, pageSize = 10) => {
   }
 }
 
-const handleTableChange = (pag: any, filters: any, sorter: any) => {
+const handleTableChange = (pag: any, _filters: any) => {
   pagination.current = pag.current
   pagination.pageSize = pag.pageSize
   getjobTableData(pagination.current, pagination.pageSize)

@@ -48,7 +48,7 @@ const router = createRouter({
 })
 
 // 全局前置守卫，设置页面标题
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   document.title = to.meta.title as string || '任务调度系统'
   next()
 })

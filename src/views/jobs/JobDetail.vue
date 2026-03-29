@@ -380,7 +380,7 @@ import {
   getJob,
   getTaskInfo
 } from '../../api/index'
-import type { Job, LogItem, FuncOption } from '../../types/api'
+import type { Job, LogItem } from '../../types/api'
 
 // 初始化dayjs插件
 dayjs.extend(relativeTime)
