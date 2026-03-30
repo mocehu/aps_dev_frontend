@@ -73,13 +73,13 @@
           <div class="form-helper-text">任务名称用于识别不同的任务，建议使用有意义的名称</div>
         </a-form-item>
 
-        <a-form-item label="任务ID">
+        <a-form-item v-if="formDataCopy.id" label="任务ID">
           <a-input
-            v-model:value="formDataCopy.job_id" 
+            v-model:value="formDataCopy.id" 
             disabled
             style="width: 100%"
           />
-          <div class="form-helper-text">任务ID是任务的唯一标识，创建成功后自动生成</div>
+          <div class="form-helper-text">任务ID是任务的唯一标识，由系统自动生成</div>
         </a-form-item>
       </div>
 
@@ -292,9 +292,9 @@ interface FormData {
   func: string;
   trigger: string;
   kwargs: Record<string, any>;
-  job_id: string;
   name: string;
   trigger_args: Record<string, any>;
+  id?: string;
   [key: string]: any;
 }
 
@@ -322,7 +322,6 @@ const formDataCopy = ref<FormData>({
   func: '',
   trigger: '',
   kwargs: {},
-  job_id: '',
   name: '',
   trigger_args: {}
 })
@@ -481,10 +480,6 @@ const changeFunc = (value: string) => {
   whatsFunc.value = value
   formStepActive.value = 2
   
-  // 自动生成任务ID
-  generateAutoId()
-  
-  // 初始化kwargs
   if (value === 'another_task') {
     formDataCopy.value.kwargs = { param: '' }
   } else if (value === 'run_os_command' || value === 'run_python_command') {
@@ -521,29 +516,8 @@ const getFuncDescription = (funcName: string) => {
   return funcOption?.description || ''
 }
 
-// 根据任务函数和时间自动生成唯一ID
-const generateAutoId = () => {
-  if (!formDataCopy.value.func) return
-  
-  const func = formDataCopy.value.func
-  const timestamp = Date.now().toString()
-  const hash = Math.abs(timestamp.split('').reduce((a, b) => {
-    a = ((a << 5) - a) + b.charCodeAt(0)
-    return a & a
-  }, 0)).toString(36).slice(0, 4)
-  
-  formDataCopy.value.job_id = `${func}_${timestamp.slice(-8)}_${hash}`
-}
-
-// 提交表单
 const submitForm = async () => {
   try {
-    // 确保生成任务ID
-    if (!formDataCopy.value.job_id) {
-      generateAutoId()
-    }
-    
-    // 表单校验
     await formRef.value.validate()
     
     // 参数校验

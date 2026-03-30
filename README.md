@@ -1,25 +1,68 @@
-# APScheduler 可视化项目前端部分
+# APScheduler Visual 🚀
 
-## 项目启动与初始化
+> 一个让定时任务管理变得优雅愉悦的可视化面板
 
-`npm install`
+厌倦了在命令行里敲 APScheduler 的配置？想要一个漂亮的界面来管理你的定时任务？这个项目就是你的答案！
 
-`npm run dev`
+## ✨ 特性
 
-接口地址在.env文件中编辑
+- 📋 **任务管理** - 创建、修改、删除、暂停、恢复，一个界面搞定
+- 🤖 **AI 助手** - 用自然语言描述需求，AI 自动生成任务草案
+- 📊 **实时监控** - 任务状态、执行记录、运行日志一目了然
+- 🔐 **安全认证** - 支持 API Key 认证，保护你的任务不被误操作
+- 🎨 **现代 UI** - 基于 Ant Design Vue，界面美观、响应式设计
+- ⚡ **即时生效** - 配置修改立即生效，无需重启服务
 
-后端仓库地址 https://github.com/mocehu/python-apscheduler-visual
+## 🛠️ 技术栈
 
-## 截图预览
+- **框架**: Vue 3 + TypeScript
+- **UI 库**: Ant Design Vue 4.x
+- **构建工具**: Vite
+- **路由**: Vue Router
+- **HTTP**: Axios
+- **AI 对话**: ant-design-x-vue + SSE 流式响应
 
-![QQ_1752459021112](assets/QQ_1752459021112.png)
+## 🚀 快速开始
 
-![QQ_1752459051729](assets/QQ_1752459051729.png)
+```bash
+# 安装依赖
+npm install
 
-![QQ_1752459077212](assets/QQ_1752459077212.png)
+# 启动开发服务器
+npm run dev
 
-![QQ_1752459093630](assets/QQ_1752459093630.png)
+# 构建生产版本
+npm run build
+```
 
-![](assets/QQ_1752459116141.png)
+**环境配置**: 在 `.env` 文件中设置后端 API 地址
 
-![QQ_1752459136957](assets/QQ_1752459136957.png)
+```env
+VITE_BASE_URL=http://localhost:8000
+```
+
+## 📸 界面预览
+
+| 任务列表 | 创建任务 |
+|:---:|:---:|
+| ![任务列表](assets/image-20260330225833456.png) | ![创建任务](assets/image-20260330225853723.png) |
+
+| 任务详情 | 运行日志 |
+|:---:|:---:|
+| ![任务详情](assets/image-20260330225909257.png) | ![运行日志](assets/image-20260330225931341.png) |
+
+| AI 助手 | 系统配置 |
+|:---:|:---:|
+| ![AI 助手](assets/image-20260330225950969.png) | ![系统配置](assets/image-20260330230006580.png) |
+
+| 版本信息 | 更新日志 |
+|:---:|:---:|
+| ![版本信息](assets/image-20260330230058896.png) | ![更新日志](assets/image-20260330230246213.png) |
+
+## 📦 相关项目
+
+- **后端**: [python-apscheduler-visual](https://github.com/mocehu/python-apscheduler-visual) - 基于 FastAPI + APScheduler
+
+## 📄 许可证
+
+MIT License

@@ -4,7 +4,10 @@
       <template #title>
         <div class="card-header">
           <h2>计划任务</h2>
-          <a-button type="primary" @click="createJob">创建计划任务</a-button>
+          <a-space>
+            <a-button @click="openAiAssistant">AI 生成草案</a-button>
+            <a-button type="primary" @click="createJob">创建计划任务</a-button>
+          </a-space>
         </div>
       </template>
       
@@ -154,6 +157,7 @@ import {
   getJob,
   getTaskInfo, getFuncOptions
 } from '../../api/index'
+import { clearPendingAiDraft, getPendingAiDraft, normalizeDraftPayload } from '../../utils/aiDraft'
 
 const router = useRouter()
 
@@ -172,7 +176,6 @@ const initFormData = ref({
   func: '',
   trigger: '',
   kwargs: {},
-  job_id: '',
   name: '',
   trigger_args: {}
 })
@@ -327,6 +330,10 @@ const createJob = async () => {
   drawer.value = true
 }
 
+const openAiAssistant = () => {
+  router.push('/ai')
+}
+
 const editJob = async (row: any) => {
   drawerTitle.value = '修改任务'
   
@@ -442,8 +449,7 @@ const editJob = async (row: any) => {
       }
       
       formData.value = {
-        ...data,
-        job_id: data.id
+        ...data
       }
       
       drawer.value = true
@@ -551,6 +557,25 @@ const loadFuncOptions = async () => {
   }
 }
 
+const applyPendingAiDraft = async () => {
+  const draft = getPendingAiDraft()
+  if (!draft || !draft.payload) {
+    return
+  }
+
+  await loadFuncOptions()
+
+  const draftPayload = normalizeDraftPayload(draft.payload)
+  drawerTitle.value = draft.action === 'update_job' ? 'AI 生成的修改草案' : 'AI 生成的任务草案'
+  formData.value = {
+    ..._.cloneDeep(initFormData.value),
+    ...draftPayload
+  }
+  drawer.value = true
+  clearPendingAiDraft()
+  message.success('已将 AI 草案填入任务表单，请确认后保存')
+}
+
 // 检查时间是否有效
 const isValidTime = (timeStr: string | null | undefined) => {
   if (!timeStr) return false
@@ -631,6 +656,7 @@ const formatTooltipContent = (content: string | object) => {
 
 onMounted(() => {
   getjobTableData()
+  applyPendingAiDraft()
 })
 </script>
 

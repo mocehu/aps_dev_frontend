@@ -21,6 +21,10 @@
           <template #icon><file-outlined /></template>
           <router-link to="/logs">日志信息</router-link>
         </a-menu-item>
+<a-menu-item key="/ai" v-if="aiEnabled">
+          <template #icon><robot-outlined /></template>
+          <router-link to="/ai">AI 助手</router-link>
+        </a-menu-item>
         <a-menu-item key="/config">
           <template #icon><setting-outlined /></template>
           <router-link to="/config">系统配置</router-link>
@@ -48,18 +52,53 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { 
   CalendarOutlined, 
   UnorderedListOutlined, 
   FileOutlined,
+  RobotOutlined,
   SettingOutlined,
   BookOutlined
 } from '@ant-design/icons-vue'
+import { getAiConfig } from '../api/index'
+import { aiEnabledRef, setAiEnabled } from '../utils/aiState'
 
 const route = useRoute()
+const router = useRouter()
 const activeKeys = ref<string[]>([])
+const aiEnabled = aiEnabledRef
+
+const loadAiStatus = async () => {
+  try {
+    const res = await getAiConfig()
+    if (res.code === 200 && res.data) {
+      setAiEnabled(res.data.ai_enabled?.value === 'true')
+    }
+  } catch (error) {
+    console.error('加载 AI 配置失败:', error)
+  }
+}
+
+const checkAiAccess = () => {
+  if (!aiEnabled.value && route.path === '/ai') {
+    router.replace('/jobs')
+  }
+}
+
+watch(() => route.path, () => {
+  checkAiAccess()
+})
+
+watch(aiEnabled, () => {
+  checkAiAccess()
+})
+
+onMounted(async () => {
+  await loadAiStatus()
+  checkAiAccess()
+})
 
 // 计算当前激活的菜单项
 const selectedKeys = computed(() => {

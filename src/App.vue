@@ -11,14 +11,14 @@
     width="400px"
   >
     <a-alert type="warning" show-icon style="margin-bottom: 16px">
-      <template #message>API 认证失败，请配置有效的 API Key</template>
+      <template #message>HTTP API 认证失败，请配置有效的HTTP API Key</template>
     </a-alert>
     
     <a-form layout="vertical">
       <a-form-item label="API Key">
         <a-input-password 
           v-model:value="tempApiKey" 
-          placeholder="请输入 API Key"
+          placeholder="请输入HTTP API Key"
         />
       </a-form-item>
       <a-form-item>

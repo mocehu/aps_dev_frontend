@@ -59,3 +59,128 @@ export interface FuncOption {
   parsed_description?: string;
   category?: string;
 } 
+
+export interface DraftPayload {
+  func?: string;
+  trigger?: string;
+  trigger_args?: Record<string, any>;
+  args?: any[];
+  kwargs?: Record<string, any>;
+  name?: string | null;
+  job_id?: string;
+  id?: string;
+  configs?: Record<string, any>;
+  [key: string]: any;
+}
+
+export interface DraftDisplayField {
+  label: string;
+  value: string;
+}
+
+export interface DraftDisplay {
+  title: string;
+  fields: DraftDisplayField[];
+  warning?: string;
+}
+
+export interface AiDraft {
+  action: 'create_job' | 'update_job' | 'delete_job' | 'pause_job' | 'resume_job' | 'update_config' | string;
+  payload: DraftPayload;
+  display: DraftDisplay;
+  confirm_text?: string;
+  cancel_text?: string;
+}
+
+export interface AiToolCall {
+  name: string;
+  arguments: Record<string, any> | string;
+  result?: {
+    action?: string;
+    payload?: DraftPayload;
+    [key: string]: any;
+  } | string;
+  status?: string;
+}
+
+export interface AiChatRequest {
+  message: string;
+  session_id?: string | null;
+  model?: string;
+  mode?: string;
+}
+
+export interface AiChatResponseData {
+  session_id: string;
+  reply: string;
+  tool_calls: AiToolCall[];
+  draft: AiDraft | null;
+  model?: string;
+  provider?: string;
+}
+
+export interface AiSessionItem {
+  id: string;
+  title: string;
+  provider: string;
+  model: string;
+  mode: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AiMessageItem {
+  id: number;
+  session_id: string;
+  role: 'user' | 'assistant' | string;
+  content: string;
+  created_at: string;
+}
+
+export interface AiToolCallRecord {
+  id: number;
+  session_id: string;
+  message_id: number | null;
+  tool_name: string;
+  tool_args: string;
+  tool_result: string;
+  status: string;
+  created_at: string;
+}
+
+export interface AiSessionDetail {
+  session: AiSessionItem;
+  messages: AiMessageItem[];
+  tool_calls: AiToolCallRecord[];
+}
+
+export interface AiModelsData {
+  models: Record<string, string[]>;
+  current: {
+    provider: string;
+    model: string;
+  };
+}
+
+export interface AiConfigMap {
+  [key: string]: ConfigItem;
+}
+
+export interface AiConfigUpdatePayload {
+  ai_enabled?: string;
+  ai_provider?: string;
+  ai_base_url?: string;
+  ai_api_key?: string;
+  ai_model?: string;
+  ai_allow_execute?: string;
+  ai_stream_enabled?: string;
+  ai_agent_api_key?: string;
+  ai_max_history_messages?: string;
+  [key: string]: string | undefined;
+}
+
+export interface ConfigItem {
+  value: string;
+  description: string;
+  updated_at: string | null;
+}

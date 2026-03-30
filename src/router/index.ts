@@ -33,6 +33,12 @@ const routes: Array<RouteRecordRaw> = [
         meta: { title: '日志信息' }
       },
       {
+        path: '/ai',
+        name: 'AiChat',
+        component: () => import('../views/ai/AiChat.vue'),
+        meta: { title: 'AI 助手' }
+      },
+      {
         path: '/config',
         name: 'Config',
         component: () => import('../views/config/Config.vue'),

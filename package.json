@@ -10,10 +10,13 @@
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@types/markdown-it": "^14.1.2",
     "ant-design-vue": "^4.1.2",
+    "ant-design-x-vue": "^1.6.0",
     "axios": "^1.6.8",
     "dayjs": "^1.11.13",
     "lodash": "^4.17.21",
+    "markdown-it": "^14.1.1",
     "vue": "^3.4.35",
     "vue-router": "^4.5.1"
   },
