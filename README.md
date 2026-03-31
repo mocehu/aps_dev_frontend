@@ -1,4 +1,6 @@
-# APScheduler Visual 🚀
+# ![favs_logo](assets/favs_logo.png)
+
+FAVS前端部分
 
 > 一个让定时任务管理变得优雅愉悦的可视化面板
 
@@ -61,7 +63,7 @@ VITE_BASE_URL=http://localhost:8000
 
 ## 📦 相关项目
 
-- **后端**: [python-apscheduler-visual](https://github.com/mocehu/python-apscheduler-visual) - 基于 FastAPI + APScheduler
+- **后端**: [fastapi-apscheduler-visual](https://github.com/mocehu/fastapi-apscheduler-visual) - 基于 FastAPI + APScheduler
 
 ## 📄 许可证
 

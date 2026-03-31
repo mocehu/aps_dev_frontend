@@ -137,6 +137,9 @@
 
       <a-col :xs="24" :xl="8">
         <a-card :bordered="false" title="版本信息" style="margin-bottom: 24px">
+          <div style="text-align: center; margin-bottom: 16px">
+            <img src="/logo.png" alt="APSV" style="height: 64px" />
+          </div>
           <a-spin :spinning="versionLoading">
             <a-descriptions :column="1" size="small" v-if="versionInfo">
               <a-descriptions-item label="当前版本">

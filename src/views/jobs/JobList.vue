@@ -5,7 +5,7 @@
         <div class="card-header">
           <h2>计划任务</h2>
           <a-space>
-            <a-button @click="openAiAssistant">AI 生成草案</a-button>
+            <a-button @click="openAiAssistant">AI 操作任务</a-button>
             <a-button type="primary" @click="createJob">创建计划任务</a-button>
           </a-space>
         </div>

@@ -2,7 +2,7 @@
   <a-layout class="app-container">
     <!-- 顶部导航栏 -->
     <a-layout-header class="app-header">
-      <div class="header-title">定时任务管理</div>
+      <img class="header-logo" src="/logo.png" alt="APSV" />
       <a-menu
         mode="horizontal"
         :selectedKeys="activeKeys"
@@ -140,11 +140,10 @@ const openApiDocs = () => {
   height: 64px;
   line-height: 64px;
   
-  .header-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: #1890ff;
+  .header-logo {
+    height: 36px;
     margin-right: 30px;
+    cursor: pointer;
   }
   
   .nav-menu {
