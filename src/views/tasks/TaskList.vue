@@ -5,7 +5,17 @@
         <div class="card-header">
           <h2>可用函数</h2>
           <div class="header-actions">
-            <a-button type="primary" @click="goToJobList">查看计划任务</a-button>
+            <a-space>
+              <a-button type="primary" @click="openCreateFuncModal">
+                <template #icon><plus-outlined /></template>
+                新建函数
+              </a-button>
+              <a-button @click="handleReloadTasks" :loading="reloading">
+                <template #icon><reload-outlined /></template>
+                热加载
+              </a-button>
+              <a-button @click="goToJobList">查看计划任务</a-button>
+            </a-space>
           </div>
         </div>
       </template>
@@ -68,8 +78,15 @@
                 >
                   {{ item.category }}
                 </a-tag>
+                <a-tag 
+                  v-if="isCustomFunc(item) && item.is_used" 
+                  size="small" 
+                  color="green"
+                  class="used-label"
+                >
+                  使用中
+                </a-tag>
               </div>
-              <a-button type="primary" plain @click.stop="quickCreateTask(item)">创建任务</a-button>
             </div>
           </template>
           
@@ -96,6 +113,21 @@
               <div class="param-count">{{ Object.keys(item.parameters).length }} 个参数</div>
             </div>
           </div>
+
+          <template #actions>
+            <a-flex justify="flex-end" gap="small">
+              <template v-if="isCustomFunc(item)">
+                <a-popconfirm
+                  :title="item.is_used ? '此函数正在被使用，确定删除？' : '确定删除此函数？'"
+                  @confirm="handleDeleteFunc(item.name)"
+                >
+                  <a-button danger @click.stop>删除</a-button>
+                </a-popconfirm>
+                <a-button @click.stop="openEditFuncModal(item)">编辑</a-button>
+              </template>
+              <a-button type="primary" @click.stop="quickCreateTask(item)">创建任务</a-button>
+            </a-flex>
+          </template>
         </a-card>
       </div>
     </a-card>
@@ -127,6 +159,17 @@
             <a-typography-paragraph style="margin-bottom: 0">
               {{ selectedTask.parsed_description || selectedTask.description }}
             </a-typography-paragraph>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="isCustomFunc(selectedTask)" label="使用状态">
+            <template v-if="selectedTask.is_used">
+              <a-tag color="green">使用中</a-tag>
+              <span style="margin-left: 8px; color: #666">
+                被任务: {{ selectedTask.used_by_jobs?.join(', ') }}
+              </span>
+            </template>
+            <template v-else>
+              <a-tag>未使用</a-tag>
+            </template>
           </a-descriptions-item>
         </a-descriptions>
         
@@ -180,37 +223,120 @@
           </a-table>
         </template>
         
+        <template v-if="selectedTask.code">
+          <a-divider orientation="left">代码</a-divider>
+          <pre class="code-block">{{ selectedTask.code }}</pre>
+        </template>
+        
         <a-divider />
         <a-flex justify="flex-end" gap="small">
+          <a-button v-if="isCustomFunc(selectedTask)" type="default" @click="openEditFuncModal(selectedTask); detailModalVisible = false">编辑函数</a-button>
+          <a-popconfirm
+            v-if="isCustomFunc(selectedTask)"
+            title="确定删除此函数？"
+            @confirm="handleDeleteFunc(selectedTask?.name || ''); detailModalVisible = false"
+          >
+            <a-button type="default" danger>删除函数</a-button>
+          </a-popconfirm>
           <a-button type="primary" @click="quickCreateTaskFromModal">创建任务</a-button>
           <a-button @click="detailModalVisible = false">关闭</a-button>
         </a-flex>
       </template>
     </a-modal>
+
+    <a-modal
+      v-model:open="funcModalVisible"
+      :title="isEditFunc ? '编辑自定义函数' : '新建自定义函数'"
+      width="800px"
+      :confirm-loading="funcModalLoading"
+      @ok="handleFuncSubmit"
+    >
+      <a-form
+        ref="funcFormRef"
+        :model="funcFormData"
+        :rules="funcFormRules"
+        layout="vertical"
+      >
+        <a-form-item label="函数名称" name="name" v-if="!isEditFunc">
+          <a-input v-model:value="funcFormData.name" placeholder="须和代码中定义的函数名称一致!" />
+        </a-form-item>
+        <a-form-item label="分类" name="category">
+          <a-auto-complete
+            v-model:value="funcFormData.category"
+            :options="categoryOptions"
+            placeholder="选择或输入分类"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item label="描述" name="description">
+          <a-input v-model:value="funcFormData.description" placeholder="函数功能描述" />
+        </a-form-item>
+        <a-form-item label="启用状态" name="enabled" v-if="isEditFunc">
+          <a-switch v-model:checked="funcFormData.enabled" />
+        </a-form-item>
+        <div class="code-editor-wrapper">
+          <div class="code-label"><span class="required">*</span> Python 代码 </div>
+          <MonacoEditor
+            v-model="funcFormData.code"
+            language="python"
+            height="400px"
+            :show-ai-buttons="true"
+            @change="handleCodeChange"
+          />
+        </div>
+      </a-form>
+
+      <a-alert v-if="validateResult" :type="validateResult.valid ? 'success' : 'error'" show-icon>
+        <template #message>
+          <template v-if="validateResult.valid">代码验证通过</template>
+          <template v-else>
+            <div v-for="error in validateResult.errors" :key="error">{{ error }}</div>
+          </template>
+        </template>
+        <template v-if="validateResult.warnings && validateResult.warnings.length > 0" #description>
+          <div v-for="warning in validateResult.warnings" :key="warning">{{ warning }}</div>
+        </template>
+      </a-alert>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
+import { PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import _ from 'lodash'
 // @ts-ignore
 import JobFormDrawer from '../jobs/components/JobFormDrawer.vue'
-import { getFuncOptions, addJob } from '../../api/index'
-import type { FuncOption } from '../../types/api'
+import MonacoEditor from '../../components/MonacoEditor.vue'
+import {
+  getFuncOptions,
+  addJob,
+  getCustomTask,
+  createCustomTask,
+  updateCustomTask,
+  deleteCustomTask,
+  validateCustomTaskCode,
+  reloadTasks
+} from '../../api/index'
+import type { FuncOption, CustomTaskResponse, ValidateResult } from '../../types/api'
 
-// 扩展FuncOption类型以包含前端需要的字段
 interface TaskFuncOption extends FuncOption {
   label?: string;
   value?: string;
   parsed_description?: string;
-  category?: string; // 添加任务分类字段
+  category?: string;
   return_value?: {
     type: string;
     description: string;
     example?: string;
   };
+  code?: string;
+  enabled?: boolean;
+  is_used?: boolean;
+  used_by_jobs?: string[];
+  is_custom?: boolean;
 }
 
 const router = useRouter()
@@ -227,8 +353,29 @@ const formData = ref<Record<string, any>>({})
 const funcOptions = ref<TaskFuncOption[]>([])
 const detailModalVisible = ref(false)
 const selectedTask = ref<TaskFuncOption | null>(null)
+const reloading = ref(false)
+const funcModalVisible = ref(false)
+const funcModalLoading = ref(false)
+const isEditFunc = ref(false)
+const validateResult = ref<ValidateResult | null>(null)
+const funcFormRef = ref()
 
-// 初始化表单数据
+const funcFormData = reactive({
+  name: '',
+  category: 'custom',
+  description: '',
+  code: '',
+  enabled: true
+})
+
+const funcFormRules = {
+  name: [{ required: true, message: '请输入函数名称' }]
+}
+
+const categoryOptions = computed(() => {
+  return taskCategories.value.map(cat => ({ value: cat }))
+})
+
 const initFormData = ref({
   func: '',
   trigger: '',
@@ -250,9 +397,26 @@ const truncateDescription = (text: string | undefined) => {
 }
 
 // 显示任务详情弹窗
-const showTaskDetail = (item: TaskFuncOption) => {
+const showTaskDetail = async (item: TaskFuncOption) => {
   selectedTask.value = item
   detailModalVisible.value = true
+  
+  if (item.is_custom) {
+    try {
+      const res = await getCustomTask(item.name)
+      if (res.code === 200 && res.data) {
+        selectedTask.value = {
+          ...item,
+          code: res.data.code,
+          enabled: res.data.enabled,
+          is_used: res.data.is_used,
+          used_by_jobs: res.data.used_by_jobs || []
+        }
+      }
+    } catch (error) {
+      console.error('获取自定义任务详情失败:', error)
+    }
+  }
 }
 
 // 参数表格列配置
@@ -288,31 +452,25 @@ const quickCreateTaskFromModal = () => {
 // 方法
 const getFunc = async () => {
   try {
-    const response = await getFuncOptions()
+    const funcResponse = await getFuncOptions()
     
-    // 处理新的API返回结构：{code, msg, data: {tasks: [], categories: []}}
-    // 获取任务数组
     let tasksData: any[] = [];
-    if (response && typeof response === 'object') {
-      if (response.data && typeof response.data === 'object') {
-        if (Array.isArray(response.data)) {
-          // 兼容旧格式
-          tasksData = response.data;
-        } else if (response.data.tasks && Array.isArray(response.data.tasks)) {
-          // 新格式 data.tasks
-          tasksData = response.data.tasks;
+    if (funcResponse && typeof funcResponse === 'object') {
+      if (funcResponse.data && typeof funcResponse.data === 'object') {
+        if (Array.isArray(funcResponse.data)) {
+          tasksData = funcResponse.data;
+        } else if (funcResponse.data.tasks && Array.isArray(funcResponse.data.tasks)) {
+          tasksData = funcResponse.data.tasks;
           
-          // 存储任务分类
-          if (response.data.categories && Array.isArray(response.data.categories)) {
-            taskCategories.value = response.data.categories;
+          if (funcResponse.data.categories && Array.isArray(funcResponse.data.categories)) {
+            taskCategories.value = funcResponse.data.categories;
           }
         }
       }
     }
     
-    // 如果没有数据，设置为空数组
     if (!tasksData || !Array.isArray(tasksData)) {
-      console.error('API返回的数据格式不正确', response);
+      console.error('API返回的数据格式不正确', funcResponse);
       message.error('获取数据失败：数据格式异常');
       tasksData = [];
     }
@@ -511,7 +669,160 @@ const goToJobList = () => {
   router.push('/jobs')
 }
 
-// 添加对分类变化的监听
+const openCreateFuncModal = () => {
+  isEditFunc.value = false
+  funcFormData.name = ''
+  funcFormData.category = 'custom'
+  funcFormData.description = ''
+  funcFormData.code = ''
+  funcFormData.enabled = true
+  validateResult.value = null
+  funcModalVisible.value = true
+}
+
+const openEditFuncModal = async (task: TaskFuncOption) => {
+  isEditFunc.value = true
+  funcFormData.name = task.name
+  funcFormData.category = task.category || 'custom'
+  funcFormData.description = task.description || ''
+  funcFormData.enabled = task.enabled ?? true
+  validateResult.value = null
+  
+  if (task.is_custom && !task.code) {
+    try {
+      const res = await getCustomTask(task.name)
+      if (res.code === 200 && res.data) {
+        funcFormData.code = res.data.code
+        funcFormData.enabled = res.data.enabled
+      }
+    } catch (error) {
+      message.error('获取自定义任务详情失败')
+      console.error(error)
+      funcFormData.code = ''
+    }
+  } else {
+    funcFormData.code = task.code || ''
+  }
+  
+  funcModalVisible.value = true
+}
+
+const handleFuncSubmit = async (force: boolean = false) => {
+  try {
+    await funcFormRef.value.validate()
+    
+    if (!funcFormData.code.trim()) {
+      message.error('请输入代码')
+      return
+    }
+    
+    const validateRes = await validateCustomTaskCode(funcFormData.code, funcFormData.name)
+    if (validateRes.code === 200) {
+      validateResult.value = validateRes.data
+      if (!validateRes.data?.valid) {
+        message.error('代码验证失败')
+        return
+      }
+    }
+
+    funcModalLoading.value = true
+    if (isEditFunc.value) {
+      const res = await updateCustomTask(funcFormData.name, {
+        category: funcFormData.category,
+        description: funcFormData.description,
+        code: funcFormData.code,
+        enabled: funcFormData.enabled
+      }, force)
+      if (res.code === 200) {
+        message.success('更新成功')
+        funcModalVisible.value = false
+        getFunc()
+      }
+    } else {
+      const res = await createCustomTask({
+        name: funcFormData.name,
+        category: funcFormData.category,
+        description: funcFormData.description,
+        code: funcFormData.code
+      })
+      if (res.code === 200) {
+        message.success('创建成功')
+        funcModalVisible.value = false
+        getFunc()
+      }
+    }
+  } catch (error: any) {
+    const errorMsg = error?.response?.data?.msg || error?.message || '操作失败'
+    if (isEditFunc.value && errorMsg.includes('正在被') && errorMsg.includes('使用')) {
+      Modal.confirm({
+        title: '任务正在被使用',
+        content: errorMsg + '，是否强制更新？',
+        okText: '强制更新',
+        okType: 'danger',
+        cancelText: '取消',
+        onOk: () => handleFuncSubmit(true)
+      })
+    } else {
+      message.error(errorMsg)
+    }
+    console.error(error)
+  } finally {
+    funcModalLoading.value = false
+  }
+}
+
+const handleDeleteFunc = async (name: string, force: boolean = false) => {
+  try {
+    const res = await deleteCustomTask(name, force)
+    if (res.code === 200) {
+      message.success('删除成功')
+      getFunc()
+    }
+  } catch (error: any) {
+    const errorMsg = error?.response?.data?.msg || error?.message || '删除失败'
+    if (errorMsg.includes('正在被') && errorMsg.includes('使用')) {
+      Modal.confirm({
+        title: '任务正在被使用',
+        content: errorMsg + '，是否强制删除？',
+        okText: '强制删除',
+        okType: 'danger',
+        cancelText: '取消',
+        onOk: () => handleDeleteFunc(name, true)
+      })
+    } else {
+      message.error(errorMsg)
+    }
+    console.error(error)
+  }
+}
+
+const handleReloadTasks = async () => {
+  reloading.value = true
+  try {
+    const res = await reloadTasks()
+    if (res.code === 200) {
+      message.success('热加载成功')
+      getFunc()
+    }
+  } catch (error) {
+    message.error('热加载失败')
+    console.error(error)
+  } finally {
+    reloading.value = false
+  }
+}
+
+const isCustomFunc = (task: TaskFuncOption) => {
+  if (!task) return false
+  return task.is_custom === true
+}
+
+const handleCodeChange = () => {
+  if (funcFormRef.value) {
+    funcFormRef.value.validateFields(['code'])
+  }
+}
+
 watch(() => selectedCategory.value, () => {
   filterTasks();
 });
@@ -532,6 +843,8 @@ const getTagTypeByCategory = (category?: string): string => {
       return 'danger';
     case 'example':
       return 'success';
+    case 'custom':
+      return 'warning';
     default:
       return 'info';
   }
@@ -544,6 +857,33 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .task-list-container {
+  .code-block {
+    background: #f5f5f5;
+    padding: 16px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-x: auto;
+  }
+
+  .code-editor-wrapper {
+    margin-bottom: 24px;
+
+    .code-label {
+      margin-bottom: 8px;
+      color: rgba(0, 0, 0, 0.88);
+      font-size: 14px;
+
+      .required {
+        color: #ff4d4f;
+        margin-left: 2px;
+      }
+    }
+  }
+
   .card-header {
     display: flex;
     justify-content: space-between;
@@ -592,22 +932,36 @@ onMounted(() => {
     padding: 10px 0;
     
     .task-box {
-      height: auto;
+      height: 280px;
       transition: all 0.3s;
       border: 1px solid #e4e7ed;
       border-radius: 8px;
       background-color: #ffffff;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
       
-      :deep(.el-card__header) {
+      :deep(.ant-card-head) {
         background-color: #f5f7fa;
         border-bottom: 1px solid #e4e7ed;
         padding: 12px 16px;
+        min-height: auto;
       }
       
-      :deep(.el-card__body) {
+      :deep(.ant-card-body) {
         padding: 16px;
         background-color: #ffffff;
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      :deep(.ant-card-actions) {
+        border-top: 1px solid #e4e7ed;
+        background-color: #fafafa;
+        padding: 8px 16px;
+        margin-top: auto;
       }
       
       .task-header {
@@ -641,52 +995,73 @@ onMounted(() => {
             font-size: 12px;
             flex-shrink: 0;
           }
+
+          .used-label {
+            font-size: 12px;
+            flex-shrink: 0;
+            margin-left: 4px;
+          }
+        }
+
+        .task-actions {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          flex-shrink: 0;
         }
       }
       
       .task-content {
         padding: 0;
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
         
         .section-title {
           font-weight: 600;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
           color: #303133;
+          font-size: 13px;
         }
         
         .task-description-section {
-          margin-bottom: 16px;
+          flex: 1;
+          min-height: 0;
           
           .task-description {
             color: #606266;
-            line-height: 1.6;
-            padding: 12px;
+            line-height: 1.5;
+            padding: 8px 12px;
             background-color: #f8f9fa;
             border-radius: 4px;
             white-space: pre-line;
             word-break: break-word;
-            min-height: 50px;
-            font-size: 14px;
-            border-left: 4px solid #409EFF;
+            font-size: 13px;
+            border-left: 3px solid #409EFF;
+            overflow: hidden;
+            max-height: 80px;
           }
         }
         
         .task-return {
-          margin-bottom: 16px;
+          margin-bottom: 0;
           
           .return-description {
-            padding: 10px;
+            padding: 8px;
             background-color: #f0f9eb;
             border-radius: 4px;
-            border-left: 4px solid #67c23a;
+            border-left: 3px solid #67c23a;
             
             .return-details {
-              margin-top: 8px;
+              margin-top: 4px;
               color: #606266;
-              font-size: 14px;
-              line-height: 1.5;
+              font-size: 13px;
+              line-height: 1.4;
               
               .return-text {
-                margin-bottom: 6px;
+                margin-bottom: 0;
                 white-space: pre-line;
               }
               
@@ -706,71 +1081,7 @@ onMounted(() => {
         }
         
         .task-parameters {
-          margin-bottom: 16px;
-          
-          .param-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            
-            .param-item {
-              .param-header {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin-bottom: 4px;
-                
-                .param-name {
-                  font-weight: 500;
-                  color: #303133;
-                }
-                
-                .param-type {
-                  font-size: 12px;
-                  line-height: 1;
-                  padding: 2px 6px;
-                  height: auto;
-                  margin: 0;
-                }
-                
-                .required-tag {
-                  font-size: 12px;
-                  line-height: 1;
-                  padding: 2px 6px;
-                  height: auto;
-                  margin: 0;
-                }
-                
-                :deep(.ant-tag) {
-                  margin-right: 0;
-                }
-              }
-              
-              .param-body {
-                padding-left: 8px;
-                border-left: 2px solid #e8e8e8;
-                color: #606266;
-                font-size: 13px;
-                
-                .param-description {
-                  margin-bottom: 4px;
-                  line-height: 1.5;
-                }
-                
-                .param-default {
-                  color: #909399;
-                  
-                  code {
-                    background-color: #f5f7fa;
-                    padding: 2px 4px;
-                    border-radius: 3px;
-                    font-family: monospace;
-                    color: #e6a23c;
-                  }
-                }
-              }
-            }
-          }
+          margin-bottom: 0;
           
           .param-count {
             color: #909399;

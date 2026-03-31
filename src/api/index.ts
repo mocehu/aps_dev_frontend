@@ -14,7 +14,17 @@ import type {
   AiSessionDetail,
   AiModelsData,
   AiConfigMap,
-  AiConfigUpdatePayload
+  AiConfigUpdatePayload,
+  CustomTaskCreate,
+  CustomTaskUpdate,
+  CustomTaskResponse,
+  SecurityConfig,
+  SecurityConfigUpdate,
+  ValidateResult,
+  GenerateCodeRequest,
+  GenerateCodeResponse,
+  ReviewCodeRequest,
+  ReviewCodeResponse
 } from '../types/api';
 
 // 保存所有接口
@@ -74,9 +84,9 @@ export function getFuncOptions(): Promise<ApiResponse<FuncOption[] | TaskCategor
   });
 }
 
-export function getTaskInfo(taskName: string): Promise<ApiResponse<FuncOption>> {
+export function getAvailableTask(taskName: string): Promise<ApiResponse<FuncOption>> {
   return request({
-    url: '/task-info/' + taskName,
+    url: '/available-tasks/' + taskName,
     method: 'get'
   });
 }
@@ -229,7 +239,8 @@ export function sendAiChat(data: AiChatRequest): Promise<ApiResponse<AiChatRespo
   return request({
     url: '/ai/chat',
     method: 'post',
-    data
+    data,
+    timeout: 120000
   });
 }
 
@@ -404,4 +415,258 @@ export function updateAiConfig(data: AiConfigUpdatePayload): Promise<ApiResponse
     method: 'put',
     data
   });
+}
+
+export function getCustomTasks(): Promise<ApiResponse<CustomTaskResponse[]>> {
+  return request({
+    url: '/custom-tasks/',
+    method: 'get'
+  });
+}
+
+export function getCustomTask(name: string): Promise<ApiResponse<CustomTaskResponse>> {
+  return request({
+    url: '/custom-tasks/' + name,
+    method: 'get'
+  });
+}
+
+export function createCustomTask(data: CustomTaskCreate): Promise<ApiResponse<CustomTaskResponse>> {
+  return request({
+    url: '/custom-tasks/',
+    method: 'post',
+    data
+  });
+}
+
+export function updateCustomTask(name: string, data: CustomTaskUpdate, force?: boolean): Promise<ApiResponse<CustomTaskResponse>> {
+  const params: Record<string, any> = {}
+  if (force) params.force = true
+  return request({
+    url: '/custom-tasks/' + name,
+    method: 'put',
+    data,
+    params
+  });
+}
+
+export function deleteCustomTask(name: string, force?: boolean): Promise<ApiResponse<any>> {
+  const params: Record<string, any> = {}
+  if (force) params.force = true
+  return request({
+    url: '/custom-tasks/' + name,
+    method: 'delete',
+    params
+  });
+}
+
+export function validateCustomTaskCode(code: string, name?: string): Promise<ApiResponse<ValidateResult>> {
+  return request({
+    url: '/custom-tasks/validate',
+    method: 'post',
+    data: { code, name: name || 'validate_func' }
+  });
+}
+
+export function reloadCustomTasks(): Promise<ApiResponse<any>> {
+  return request({
+    url: '/custom-tasks/reload',
+    method: 'post'
+  });
+}
+
+export function getSecurityConfig(): Promise<ApiResponse<SecurityConfig>> {
+  return request({
+    url: '/custom-tasks/security-config',
+    method: 'get'
+  });
+}
+
+export function updateSecurityConfig(data: SecurityConfigUpdate): Promise<ApiResponse<SecurityConfig>> {
+  return request({
+    url: '/custom-tasks/security-config',
+    method: 'put',
+    params: data
+  });
+}
+
+export function reloadTasks(): Promise<ApiResponse<any>> {
+  return request({
+    url: '/reload-tasks/',
+    method: 'post'
+  });
+}
+
+export function generateCode(data: GenerateCodeRequest): Promise<ApiResponse<GenerateCodeResponse>> {
+  return request({
+    url: '/ai/generate-code',
+    method: 'post',
+    data,
+    timeout: 120000
+  });
+}
+
+export function reviewCode(data: ReviewCodeRequest): Promise<ApiResponse<ReviewCodeResponse>> {
+  return request({
+    url: '/ai/review-code',
+    method: 'post',
+    data,
+    timeout: 120000
+  });
+}
+
+export interface StreamGenerateCallbacks {
+  onStatus?: (message: string) => void;
+  onContent?: (content: string) => void;
+  onDone?: (code: string) => void;
+  onError?: (error: string) => void;
+}
+
+export interface StreamReviewCallbacks {
+  onStatus?: (message: string) => void;
+  onSecurity?: (data: { safe: boolean; errors: string[]; warnings: string[] }) => void;
+  onDone?: (result: ReviewCodeResponse) => void;
+  onError?: (error: string) => void;
+}
+
+export async function generateCodeStream(
+  data: GenerateCodeRequest,
+  callbacks: StreamGenerateCallbacks
+): Promise<void> {
+  const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://192.168.2.78:8000';
+  const apiKey = localStorage.getItem('API_KEY');
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream'
+  };
+
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/ai/generate-code/stream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No reader available');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.type === 'status' && callbacks.onStatus) {
+              callbacks.onStatus(json.message);
+            } else if (json.type === 'content' && callbacks.onContent) {
+              callbacks.onContent(json.content);
+            } else if (json.type === 'done' && callbacks.onDone) {
+              callbacks.onDone(json.code);
+            } else if (json.type === 'error' && callbacks.onError) {
+              callbacks.onError(json.message || '生成失败');
+            }
+          } catch (e) {
+            console.error('Failed to parse SSE data:', line);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    callbacks.onError?.(error instanceof Error ? error.message : '生成失败');
+  }
+}
+
+export async function reviewCodeStream(
+  data: ReviewCodeRequest,
+  callbacks: StreamReviewCallbacks
+): Promise<void> {
+  const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://192.168.2.78:8000';
+  const apiKey = localStorage.getItem('API_KEY');
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream'
+  };
+
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/ai/review-code/stream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No reader available');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.type === 'status' && callbacks.onStatus) {
+              callbacks.onStatus(json.message);
+            } else if (json.type === 'security' && callbacks.onSecurity) {
+              callbacks.onSecurity({
+                safe: json.safe,
+                errors: json.errors || [],
+                warnings: json.warnings || []
+              });
+            } else if (json.type === 'done' && callbacks.onDone) {
+              callbacks.onDone({
+                success: true,
+                security: json.security,
+                has_issues: json.has_issues
+              });
+            } else if (json.type === 'error' && callbacks.onError) {
+              callbacks.onError(json.message || '审查失败');
+            }
+          } catch (e) {
+            console.error('Failed to parse SSE data:', line);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    callbacks.onError?.(error instanceof Error ? error.message : '审查失败');
+  }
 }

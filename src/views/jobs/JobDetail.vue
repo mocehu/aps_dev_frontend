@@ -378,7 +378,7 @@ import {
   getLog,
   immediateJob,
   getJob,
-  getTaskInfo
+  getAvailableTask
 } from '../../api/index'
 import type { Job, LogItem } from '../../types/api'
 
@@ -588,7 +588,7 @@ const editJob = async (row: Job) => {
       const data = _.cloneDeep(jobResponse.data)
       
       // 获取函数详情
-      const taskResponse = await getTaskInfo(data.func)
+      const taskResponse = await getAvailableTask(data.func)
       if (taskResponse && taskResponse.code === 200 && taskResponse.data) {
         const taskInfo = taskResponse.data
         funcOptions.value = [{

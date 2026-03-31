@@ -58,6 +58,7 @@ export interface FuncOption {
   value?: string;
   parsed_description?: string;
   category?: string;
+  is_custom?: boolean;
 } 
 
 export interface DraftPayload {
@@ -183,4 +184,86 @@ export interface ConfigItem {
   value: string;
   description: string;
   updated_at: string | null;
+}
+
+export interface CustomTaskCreate {
+  name: string;
+  category?: string;
+  description?: string;
+  code: string;
+}
+
+export interface CustomTaskUpdate {
+  category?: string;
+  description?: string;
+  code?: string;
+  enabled?: boolean;
+}
+
+export interface CustomTaskParameter {
+  name: string;
+  type: string;
+  default: any;
+  required: boolean;
+}
+
+export interface CustomTaskResponse {
+  name: string;
+  category: string;
+  description: string;
+  code: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+  parameters: Record<string, CustomTaskParameter>;
+  is_used: boolean;
+  used_by_jobs: string[];
+}
+
+export interface SecurityConfig {
+  timeout: number;
+  forbidden_modules: string[];
+  forbidden_builtins: string[];
+}
+
+export interface SecurityConfigUpdate {
+  timeout?: number;
+  forbidden_modules?: string;
+  forbidden_builtins?: string;
+}
+
+export interface ValidateResult {
+  valid: boolean;
+  errors?: string[];
+  warnings?: string[];
+}
+
+export interface GenerateCodeRequest {
+  description: string;
+  func_name: string;
+}
+
+export interface GenerateCodeResponse {
+  success: boolean;
+  code: string;
+  func_name: string;
+}
+
+export interface ReviewCodeRequest {
+  code: string;
+  func_name: string;
+}
+
+export interface CodeSecurityResult {
+  safe: boolean;
+  errors: string[];
+  warnings: string[];
+  suggestions: string[];
+  summary: string;
+}
+
+export interface ReviewCodeResponse {
+  success: boolean;
+  security: CodeSecurityResult;
+  has_issues: boolean;
 }

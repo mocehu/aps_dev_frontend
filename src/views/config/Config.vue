@@ -68,7 +68,7 @@
               <a-divider orientation="left" style="margin-top: 24px">AI 配置</a-divider>
 
               <a-descriptions bordered :column="1">
-                <a-descriptions-item label="启用 AI">
+                <a-descriptions-item label="启用 AI 增强能力">
                   <a-switch
                     v-model:checked="aiEnabled"
                     checked-children="开启"
@@ -113,6 +113,59 @@
                     :max="50"
                     style="width: 100%"
                   />
+                </a-descriptions-item>
+              </a-descriptions>
+
+              <a-divider orientation="left" style="margin-top: 24px">自定义任务函数安全配置</a-divider>
+
+              <a-descriptions bordered :column="1">
+                <a-descriptions-item label="执行超时">
+                  <a-input-number
+                    v-model:value="securityConfig.timeout"
+                    :min="1"
+                    :max="300"
+                    addon-after="秒"
+                  />
+                </a-descriptions-item>
+                <a-descriptions-item label="禁止模块">
+                  <a-select
+                    v-model:value="securityConfig.forbidden_modules"
+                    mode="tags"
+                    placeholder="输入模块名后回车添加"
+                    style="width: 100%"
+                    :tokenSeparators="[',']"
+                  >
+                    <template #tagRender="{ value, closable, onClose }">
+                      <a-tag
+                        color="red"
+                        closable
+                        @close="onClose"
+                        style="margin-right: 3px"
+                      >
+                        {{ value }}
+                      </a-tag>
+                    </template>
+                  </a-select>
+                </a-descriptions-item>
+                <a-descriptions-item label="禁止函数">
+                  <a-select
+                    v-model:value="securityConfig.forbidden_builtins"
+                    mode="tags"
+                    placeholder="输入函数名后回车添加"
+                    style="width: 100%"
+                    :tokenSeparators="[',']"
+                  >
+                    <template #tagRender="{ value, closable, onClose }">
+                      <a-tag
+                        color="orange"
+                        closable
+                        @close="onClose"
+                        style="margin-right: 3px"
+                      >
+                        {{ value }}
+                      </a-tag>
+                    </template>
+                  </a-select>
                 </a-descriptions-item>
               </a-descriptions>
 
@@ -268,6 +321,8 @@ import {
   getAiConfig,
   getAiModels,
   updateAiConfig,
+  getSecurityConfig,
+  updateSecurityConfig,
   type VersionInfo,
   type UpdateCheckResult,
   type ReleaseNote
@@ -293,6 +348,11 @@ const activeReleaseKey = ref<number>(0)
 const modelGroups = ref<Array<{ provider: string; models: string[] }>>([])
 const currentAiProvider = ref('')
 const currentAiModel = ref('')
+const securityConfig = ref({
+  timeout: 30,
+  forbidden_modules: [] as string[],
+  forbidden_builtins: [] as string[]
+})
 
 const configData = ref({
   log_retention_days: 30,
@@ -401,6 +461,21 @@ const loadAiModels = async () => {
     console.error('加载 AI 模型失败:', error)
   } finally {
     modelsLoading.value = false
+  }
+}
+
+const loadSecurityConfig = async () => {
+  try {
+    const res = await getSecurityConfig()
+    if (res.code === 200 && res.data) {
+      securityConfig.value = {
+        timeout: res.data.timeout,
+        forbidden_modules: res.data.forbidden_modules || [],
+        forbidden_builtins: res.data.forbidden_builtins || []
+      }
+    }
+  } catch (error) {
+    console.error('加载安全配置失败:', error)
   }
 }
 
@@ -517,6 +592,21 @@ const saveConfig = async () => {
       mapAiConfig(originalAiConfig.value)
     }
 
+    const securityPayload: { timeout?: number; forbidden_modules?: string; forbidden_builtins?: string } = {}
+    if (securityConfig.value.timeout) {
+      securityPayload.timeout = securityConfig.value.timeout
+    }
+    if (securityConfig.value.forbidden_modules.length > 0) {
+      securityPayload.forbidden_modules = securityConfig.value.forbidden_modules.join(',')
+    }
+    if (securityConfig.value.forbidden_builtins.length > 0) {
+      securityPayload.forbidden_builtins = securityConfig.value.forbidden_builtins.join(',')
+    }
+    
+    if (Object.keys(securityPayload).length > 0) {
+      await updateSecurityConfig(securityPayload)
+    }
+
     message.success('配置保存成功')
   } catch (error) {
     message.error('保存配置失败')
@@ -545,6 +635,7 @@ onMounted(() => {
   loadConfig()
   loadAiModels()
   loadVersion()
+  loadSecurityConfig()
 })
 </script>
 

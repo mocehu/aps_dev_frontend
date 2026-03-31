@@ -155,7 +155,7 @@ import {
   editJob as apiEditJob,
   immediateJob,
   getJob,
-  getTaskInfo, getFuncOptions
+  getAvailableTask, getFuncOptions
 } from '../../api/index'
 import { clearPendingAiDraft, getPendingAiDraft, normalizeDraftPayload } from '../../utils/aiDraft'
 
@@ -344,7 +344,7 @@ const editJob = async (row: any) => {
       const data = _.cloneDeep(jobResponse.data)
       
       // 获取函数详情
-      const taskResponse = await getTaskInfo(data.func)
+      const taskResponse = await getAvailableTask(data.func)
       if (taskResponse && taskResponse.code === 200 && taskResponse.data) {
         const taskInfo = taskResponse.data
         funcOptions.value = [{
