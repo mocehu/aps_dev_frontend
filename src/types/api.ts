@@ -267,3 +267,108 @@ export interface ReviewCodeResponse {
   security: CodeSecurityResult;
   has_issues: boolean;
 }
+
+export type AlertRuleType = 'single_fail' | 'consecutive_fail' | 'timeout' | 'job_removed';
+export type AlertChannelType = 'webhook' | 'email';
+
+export interface AlertRule {
+  id: number;
+  job_id: string;
+  rule_type: AlertRuleType;
+  threshold?: number;
+  channels: number[];
+  channel_names: string[];
+  cooldown_minutes: number;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertRuleCreate {
+  job_id?: string;
+  rule_type: AlertRuleType;
+  threshold?: number;
+  channels: number[];
+  cooldown_minutes?: number;
+  enabled?: boolean;
+}
+
+export interface AlertRuleUpdate {
+  job_id?: string;
+  rule_type?: AlertRuleType;
+  threshold?: number;
+  channels?: number[];
+  cooldown_minutes?: number;
+  enabled?: boolean;
+}
+
+export interface WebhookConfig {
+  url: string;
+  method?: 'POST' | 'GET';
+  headers?: Record<string, string>;
+  body_template?: string;
+}
+
+export interface EmailConfig {
+  smtp_host: string;
+  smtp_port?: number;
+  smtp_user: string;
+  smtp_pass: string;
+  from_addr: string;
+  to_addr: string[];
+}
+
+export interface AlertChannel {
+  id: number;
+  name: string;
+  type: AlertChannelType;
+  config: WebhookConfig | EmailConfig;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertChannelCreate {
+  name: string;
+  type: AlertChannelType;
+  config: WebhookConfig | EmailConfig;
+  enabled?: boolean;
+}
+
+export interface AlertChannelUpdate {
+  name?: string;
+  type?: AlertChannelType;
+  config?: WebhookConfig | EmailConfig;
+  enabled?: boolean;
+}
+
+export interface AlertChannelTestResult {
+  success: boolean;
+  message: string;
+}
+
+export interface AlertHistoryItem {
+  id: number;
+  job_id: string;
+  rule_type: AlertRuleType;
+  channel_type: AlertChannelType;
+  status: boolean;
+  message: string;
+  sent_at: string;
+  error?: string | null;
+}
+
+export interface AlertHistoryData {
+  count: number;
+  logs: AlertHistoryItem[];
+}
+
+export interface AlertHistoryParams {
+  job_id?: string;
+  status?: 'success' | 'fail';
+  channel_type?: AlertChannelType;
+  start_time?: string;
+  end_time?: string;
+  page?: number;
+  limit?: number;
+}

@@ -38,11 +38,29 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../views/ai/AiChat.vue'),
         meta: { title: 'AI 助手' }
       },
-      {
+{
         path: '/config',
         name: 'Config',
         component: () => import('../views/config/Config.vue'),
         meta: { title: '系统配置' }
+      },
+      {
+        path: '/alerts/rules',
+        name: 'AlertRules',
+        component: () => import('../views/alerts/AlertRules.vue'),
+        meta: { title: '告警规则' }
+      },
+      {
+        path: '/alerts/channels',
+        name: 'AlertChannels',
+        component: () => import('../views/alerts/AlertChannels.vue'),
+        meta: { title: '告警渠道' }
+      },
+      {
+        path: '/alerts/history',
+        name: 'AlertHistory',
+        component: () => import('../views/alerts/AlertHistory.vue'),
+        meta: { title: '告警历史' }
       }
     ]
   }

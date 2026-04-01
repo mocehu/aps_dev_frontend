@@ -110,7 +110,7 @@
             
             <div class="task-parameters" v-if="hasParameters(item)">
               <div class="section-title">参数：</div>
-              <div class="param-count">{{ Object.keys(item.parameters).length }} 个参数</div>
+              <div class="param-count">{{ getParameterCount(item) }} 个参数</div>
             </div>
           </div>
 
@@ -147,7 +147,7 @@
     <a-modal
       v-model:open="detailModalVisible"
       :title="selectedTask?.name"
-      width="700px"
+      width="900px"
       :footer="null"
     >
       <template v-if="selectedTask">
@@ -224,8 +224,33 @@
         </template>
         
         <template v-if="selectedTask.code">
-          <a-divider orientation="left">代码</a-divider>
-          <pre class="code-block">{{ selectedTask.code }}</pre>
+          <a-divider orientation="left">
+            <a-flex align="center" gap="small">
+              代码
+              <a-button 
+                v-if="selectedTask.code.split('\n').length > 15"
+                type="link" 
+                size="small" 
+                @click="codeExpanded = !codeExpanded"
+              >
+                {{ codeExpanded ? '收起' : '展开全部' }}
+              </a-button>
+            </a-flex>
+          </a-divider>
+          <div 
+            class="code-wrapper" 
+            :style="{
+              maxHeight: (!codeExpanded && selectedTask.code.split('\n').length > 15) ? '280px' : 'none',
+              overflow: (!codeExpanded && selectedTask.code.split('\n').length > 15) ? 'hidden' : 'visible',
+              position: 'relative'
+            }"
+          >
+            <pre class="code-block">{{ selectedTask.code }}</pre>
+            <div 
+              v-if="!codeExpanded && selectedTask.code.split('\n').length > 15"
+              class="code-fade-overlay"
+            ></div>
+          </div>
         </template>
         
         <a-divider />
@@ -312,6 +337,7 @@ import JobFormDrawer from '../jobs/components/JobFormDrawer.vue'
 import MonacoEditor from '../../components/MonacoEditor.vue'
 import {
   getFuncOptions,
+  getAvailableTask,
   addJob,
   getCustomTask,
   createCustomTask,
@@ -359,6 +385,7 @@ const funcModalLoading = ref(false)
 const isEditFunc = ref(false)
 const validateResult = ref<ValidateResult | null>(null)
 const funcFormRef = ref()
+const codeExpanded = ref(false)
 
 const funcFormData = reactive({
   name: '',
@@ -387,7 +414,16 @@ const initFormData = ref({
 
 // 检查是否有参数
 const hasParameters = (item: TaskFuncOption) => {
-  return item.parameters && Object.keys(item.parameters).length > 0;
+  if (!item.parameters) return false
+  if (typeof item.parameters === 'number') return item.parameters > 0
+  return Object.keys(item.parameters).length > 0
+}
+
+// 获取参数数量
+const getParameterCount = (item: TaskFuncOption) => {
+  if (!item.parameters) return 0
+  if (typeof item.parameters === 'number') return item.parameters
+  return Object.keys(item.parameters).length
 }
 
 // 截断描述
@@ -400,22 +436,28 @@ const truncateDescription = (text: string | undefined) => {
 const showTaskDetail = async (item: TaskFuncOption) => {
   selectedTask.value = item
   detailModalVisible.value = true
+  codeExpanded.value = false
   
-  if (item.is_custom) {
-    try {
-      const res = await getCustomTask(item.name)
+  try {
+    if (item.is_custom) {
+      const customRes = await getCustomTask(item.name)
+      if (customRes.code === 200 && customRes.data) {
+        selectedTask.value = {
+          ...item,
+          ...customRes.data
+        }
+      }
+    } else {
+      const res = await getAvailableTask(item.name)
       if (res.code === 200 && res.data) {
         selectedTask.value = {
           ...item,
-          code: res.data.code,
-          enabled: res.data.enabled,
-          is_used: res.data.is_used,
-          used_by_jobs: res.data.used_by_jobs || []
+          ...res.data
         }
       }
-    } catch (error) {
-      console.error('获取自定义任务详情失败:', error)
     }
+  } catch (error) {
+    console.error('获取任务详情失败:', error)
   }
 }
 
@@ -857,6 +899,23 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .task-list-container {
+  .code-wrapper {
+    position: relative;
+    border-radius: 4px;
+    background: #f5f5f5;
+  }
+
+  .code-fade-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to bottom, transparent 0%, #f5f5f5 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
   .code-block {
     background: #f5f5f5;
     padding: 16px;
@@ -866,7 +925,7 @@ onMounted(() => {
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
-    overflow-x: auto;
+    margin: 0;
   }
 
   .code-editor-wrapper {

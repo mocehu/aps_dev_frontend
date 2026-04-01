@@ -24,7 +24,16 @@ import type {
   GenerateCodeRequest,
   GenerateCodeResponse,
   ReviewCodeRequest,
-  ReviewCodeResponse
+  ReviewCodeResponse,
+  AlertRule,
+  AlertRuleCreate,
+  AlertRuleUpdate,
+  AlertChannel,
+  AlertChannelCreate,
+  AlertChannelUpdate,
+  AlertChannelTestResult,
+  AlertHistoryData,
+  AlertHistoryParams
 } from '../types/api';
 
 // 保存所有接口
@@ -669,4 +678,93 @@ export async function reviewCodeStream(
   } catch (error) {
     callbacks.onError?.(error instanceof Error ? error.message : '审查失败');
   }
+}
+
+export function getAlertRules(): Promise<ApiResponse<AlertRule[]>> {
+  return request({
+    url: '/alerts/rules/',
+    method: 'get'
+  });
+}
+
+export function getAlertRule(id: number): Promise<ApiResponse<AlertRule>> {
+  return request({
+    url: `/alerts/rules/${id}`,
+    method: 'get'
+  });
+}
+
+export function createAlertRule(data: AlertRuleCreate): Promise<ApiResponse<AlertRule>> {
+  return request({
+    url: '/alerts/rules/',
+    method: 'post',
+    data
+  });
+}
+
+export function updateAlertRule(id: number, data: AlertRuleUpdate): Promise<ApiResponse<AlertRule>> {
+  return request({
+    url: `/alerts/rules/${id}`,
+    method: 'put',
+    data
+  });
+}
+
+export function deleteAlertRule(id: number): Promise<ApiResponse<any>> {
+  return request({
+    url: `/alerts/rules/${id}`,
+    method: 'delete'
+  });
+}
+
+export function getAlertChannels(): Promise<ApiResponse<AlertChannel[]>> {
+  return request({
+    url: '/alerts/channels/',
+    method: 'get'
+  });
+}
+
+export function getAlertChannel(id: number): Promise<ApiResponse<AlertChannel>> {
+  return request({
+    url: `/alerts/channels/${id}`,
+    method: 'get'
+  });
+}
+
+export function createAlertChannel(data: AlertChannelCreate): Promise<ApiResponse<AlertChannel>> {
+  return request({
+    url: '/alerts/channels/',
+    method: 'post',
+    data
+  });
+}
+
+export function updateAlertChannel(id: number, data: AlertChannelUpdate): Promise<ApiResponse<AlertChannel>> {
+  return request({
+    url: `/alerts/channels/${id}`,
+    method: 'put',
+    data
+  });
+}
+
+export function deleteAlertChannel(id: number): Promise<ApiResponse<any>> {
+  return request({
+    url: `/alerts/channels/${id}`,
+    method: 'delete'
+  });
+}
+
+export function testAlertChannel(id: number): Promise<ApiResponse<AlertChannelTestResult>> {
+  return request({
+    url: `/alerts/channels/${id}/test`,
+    method: 'post'
+  });
+}
+
+export function getAlertHistory(params: AlertHistoryParams): Promise<ApiResponse<AlertHistoryData>> {
+  return request({
+    url: '/alerts/history/',
+    method: 'get',
+    params
+  });
 }

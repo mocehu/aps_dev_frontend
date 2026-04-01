@@ -25,6 +25,19 @@
           <template #icon><robot-outlined /></template>
           <router-link to="/ai">AI 助手</router-link>
         </a-menu-item>
+        <a-sub-menu key="/alerts">
+          <template #icon><alert-outlined /></template>
+          <template #title>告警管理</template>
+          <a-menu-item key="/alerts/rules">
+            <router-link to="/alerts/rules">告警规则</router-link>
+          </a-menu-item>
+          <a-menu-item key="/alerts/channels">
+            <router-link to="/alerts/channels">告警渠道</router-link>
+          </a-menu-item>
+          <a-menu-item key="/alerts/history">
+            <router-link to="/alerts/history">告警历史</router-link>
+          </a-menu-item>
+        </a-sub-menu>
         <a-menu-item key="/config">
           <template #icon><setting-outlined /></template>
           <router-link to="/config">系统配置</router-link>
@@ -60,7 +73,8 @@ import {
   FileOutlined,
   RobotOutlined,
   SettingOutlined,
-  BookOutlined
+  BookOutlined,
+  AlertOutlined
 } from '@ant-design/icons-vue'
 import { getAiConfig } from '../api/index'
 import { aiEnabledRef, setAiEnabled } from '../utils/aiState'
@@ -105,6 +119,9 @@ const selectedKeys = computed(() => {
   const { path } = route
   if (path.startsWith('/jobs/')) {
     return ['/jobs']
+  }
+  if (path.startsWith('/alerts/')) {
+    return [path]
   }
   return [path]
 })
